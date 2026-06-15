@@ -120,7 +120,7 @@ def critic_node(state: TriSevaState) -> dict:
             "telemetry": telemetry,
         }
 
-    context = "\n\n".join(chunks[:3])  # use top 3 chunks
+    context = "\n\n".join(chunks)  # use all retrieved chunks
 
     try:
         global llm, critic_chain
@@ -130,8 +130,8 @@ def critic_node(state: TriSevaState) -> dict:
 
         response = critic_chain.invoke({
             "query":   query,
-            "context": context[:2000],
-            "answer":  draft[:1500],
+            "context": context[:6000],
+            "answer":  draft[:2000],
         })
 
         content = response.content
