@@ -1,0 +1,183 @@
+/* ==========================================================================
+   TriSeva UI Custom Stylesheet (Light Theme / Premium Glassmorphism)
+   ========================================================================== */
+
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap');
+
+/* Global Font Settings */
+body, html, * {
+    font-family: 'Plus Jakarta Sans', sans-serif !important;
+}
+
+/* Premium Light Radial Background for Main Area */
+main {
+    background: radial-gradient(circle at top, #ffffff 0%, #f3f4f6 100%) !important;
+}
+
+/* Style the message list container */
+#chat-container {
+    max-width: 900px !important;
+    margin: 0 auto !important;
+}
+
+/* Glassmorphism styling for Message Bubbles */
+div[data-testid="message"] {
+    border-radius: 16px !important;
+    padding: 18px 24px !important;
+    margin-bottom: 16px !important;
+    border: 1px solid rgba(0, 0, 0, 0.04) !important;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.02) !important;
+    transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    color: #1e293b !important;
+}
+
+div[data-testid="message"]:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.06) !important;
+}
+
+/* User Message Bubble - Soft Teal-Blue Gradient */
+div[data-author-role="user"] {
+    background: linear-gradient(135deg, rgba(14, 165, 233, 0.08), rgba(45, 212, 191, 0.08)) !important;
+    border: 1px solid rgba(45, 212, 191, 0.2) !important;
+    margin-left: 20% !important;
+}
+
+/* Assistant Message Bubble - Clean Pure White Card */
+div[data-author-role="assistant"] {
+    background: rgba(255, 255, 255, 0.85) !important;
+    backdrop-filter: blur(12px) !important;
+    border: 1px solid rgba(0, 0, 0, 0.04) !important;
+    margin-right: 10% !important;
+}
+
+/* Style the text input box */
+textarea#chat-input {
+    background: rgba(255, 255, 255, 0.9) !important;
+    border: 1px solid rgba(0, 0, 0, 0.1) !important;
+    border-radius: 14px !important;
+    color: #1e293b !important;
+    font-size: 15px !important;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.03) !important;
+    transition: border-color 0.25s ease, box-shadow 0.25s ease !important;
+    padding: 12px 16px !important;
+    overflow: auto !important;
+    overflow-y: auto !important;
+    resize: none !important;
+}
+
+textarea#chat-input:focus {
+    border-color: #0d9488 !important;
+    box-shadow: 0 0 0 3px rgba(13, 148, 136, 0.15) !important;
+}
+
+/* Header Navbar Branding Customization */
+header {
+    background: rgba(255, 255, 255, 0.8) !important;
+    backdrop-filter: blur(8px) !important;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.05) !important;
+}
+
+/* Tables styling inside Markdown */
+table {
+    border-collapse: collapse !important;
+    width: 100% !important;
+    margin: 16px 0 !important;
+    border-radius: 10px !important;
+    overflow: hidden !important;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.02) !important;
+    border: 1px solid rgba(0, 0, 0, 0.05) !important;
+}
+
+th {
+    background: linear-gradient(135deg, #0f766e, #0d9488) !important;
+    color: #ffffff !important;
+    font-weight: 600 !important;
+    padding: 12px 16px !important;
+    text-align: left !important;
+}
+
+td {
+    padding: 12px 16px !important;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.04) !important;
+    background-color: #ffffff !important;
+    color: #334155 !important;
+}
+
+tr:nth-child(even) td {
+    background-color: #f8fafc !important;
+}
+
+tr:last-child td {
+    border-bottom: none !important;
+}
+
+/* Inline Code Elements styling */
+code {
+    background-color: rgba(13, 148, 136, 0.08) !important;
+    color: #0f766e !important;
+    padding: 3px 6px !important;
+    border-radius: 6px !important;
+    font-size: 0.9em !important;
+    font-family: monospace !important;
+}
+
+/* Custom styling for warnings and disclaimers blockquotes */
+blockquote {
+    border-left: 4px solid #0d9488 !important;
+    background-color: rgba(13, 148, 136, 0.05) !important;
+    padding: 12px 16px !important;
+    margin: 16px 0 !important;
+    border-radius: 0 8px 8px 0 !important;
+    color: #475569 !important;
+    font-style: italic !important;
+}
+
+/* Increase navbar logo size and blend with background */
+header img,
+.logo img,
+a[href="/"] img,
+div[class*="logo"] img {
+    height: 42px !important;
+    max-height: 42px !important;
+    width: auto !important;
+    mix-blend-mode: multiply !important;
+    border-radius: 50% !important;
+    filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.06)) !important;
+    opacity: 0.98 !important;
+}
+
+/* Enlarge message avatars */
+div[class*="avatar"] img,
+img[class*="avatar"],
+.cl-avatar img {
+    width: 40px !important;
+    height: 40px !important;
+    border-radius: 50% !important;
+}
+
+/* Hide Built with Chainlit Watermark */
+.watermark {
+    display: none !important;
+}
+
+/* ==========================================================================
+   Login Page Custom Layout (Rebranding)
+   ========================================================================== */
+
+/* Remove the icon on the top left of the login page */
+.grid.min-h-svh div.flex.justify-center.gap-2,
+div[class*="grid-cols-2"] div[class*="md:justify-start"] {
+    display: none !important;
+}
+
+/* Swap the right logo banner panel to the left, and the form to the right */
+.grid.min-h-svh,
+div[class*="grid-cols-2"] {
+    direction: rtl !important;
+}
+.grid.min-h-svh > div,
+div[class*="grid-cols-2"] > div {
+    direction: ltr !important;
+}
+

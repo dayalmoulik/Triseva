@@ -1,0 +1,25 @@
+{
+  "scores": {
+    "triseva": {
+      "faithfulness": 0.731,
+      "answer_relevancy": 0.576
+    },
+    "b1_naive": {
+      "faithfulness": 0.667,
+      "answer_relevancy": 0.734
+    },
+    "b2_nocritic": {
+      "faithfulness": 0.717,
+      "answer_relevancy": 0.699
+    },
+    "b3_keyword": {
+      "faithfulness": 0.69,
+      "answer_relevancy": 0.719
+    }
+  },
+  "telemetry": {
+    "avg_latency_triseva_sec": 31.79,
+    "avg_retries_triseva": 0.51,
+    "num_evaluated_questions": 500
+  }
+}

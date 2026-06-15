@@ -1,0 +1,109 @@
+================================================================================
+TRISEVA PROJECT - SUMMARY OF COMPLETED TASKS (AS OF JUNE 12, 2026)
+================================================================================
+
+This document outlines the detailed features, modules, and benchmarks that have
+been successfully designed, implemented, and verified in the TriSeva codebase.
+
+--------------------------------------------------------------------------------
+1. ARCHITECTURE & STATE-GRAPH SKELETON (main.py)
+--------------------------------------------------------------------------------
+* Designed and compiled a directed cyclic multi-agent graph using LangGraph's 
+  StateGraph framework.
+* Registered seven specialized nodes:
+  - memory_read / memory_write (for state loading and persistence)
+  - orchestrator (domain router)
+  - health_agent (healthcare specialist)
+  - legal_agent (legal & government scheme specialist)
+  - agri_agent (agriculture specialist)
+  - critic (faithfulness/relevancy validation check)
+* Integrated MemorySaver checkpointer to manage conversational state and thread-ID 
+  tracking across user sessions.
+* Configured conditional edge routing:
+  - From orchestrator to the respective specialist agent based on query intent.
+  - From critic back to orchestrator (retry/refinement loop) or to memory_write (exit).
+
+--------------------------------------------------------------------------------
+2. MULTI-STAGE DOMAIN ROUTING (agents/orchestrator.py)
+--------------------------------------------------------------------------------
+* Fine-tuned a local DistilBERT classifier ("distilbert-base-multilingual-cased") 
+  stored in "data/models/domain_router/" to classify queries into three categories:
+  health (0), legal (1), and agriculture (2).
+* Implemented a robust multi-stage routing fallback mechanism:
+  1. User Manual Override: Intercepts and uses explicit user domain choices if specified.
+  2. Local Classifier: Uses the fine-tuned DistilBERT model on local CPU resources.
+  3. LLM Router (Fallback 1): Triggers a fast Llama-3.1-8b-instant call on Groq if 
+     the local classifier fails.
+  4. Regex Keyword Router (Fallback 2): Falls back to a local rule-based regex keyword
+     matcher if all API networks are down.
+
+--------------------------------------------------------------------------------
+3. KNOWLEDGE BASE & RETRIEVAL (knowledge_base/)
+--------------------------------------------------------------------------------
+* Set up a persistent local vector database using ChromaDB under "data/chromadb".
+* Implemented semantic indexing using cross-lingual embeddings:
+  - Currently using "intfloat/multilingual-e5-base" to support query representation
+    in English, Hindi, and transliterated Hinglish.
+* Scaled Vector Database Chunk Count to 8,417 Chunks (8x expansion from 1,054 baseline):
+  - Health Domain (6,666 Chunks): Crawled 1,000 live drug monograph pages from MedlinePlus concurrently by fetching alphabetical sub-indices (Aa-Za, 00).
+  - Legal Domain (1,592 Chunks): Downloaded and parsed direct open-access PDFs for BNS 2023, DPDP 2023, and NFSA 2013 from PRS India and MeitY, bypassing WAF redirect blocks.
+  - Agriculture Domain (151 Chunks): Added working PM-KISAN Hindi guidelines and RAD-NMSA Guidelines 2024-25.
+* Developed custom chunking utilities in "knowledge_base/chunker.py" for parsing
+  raw PDFs, JSONL datasets, and clean text files.
+
+--------------------------------------------------------------------------------
+4. SPECIALIST AGENT IMPLEMENTATIONS (agents/)
+--------------------------------------------------------------------------------
+* Healthcare Agent (health_agent.py):
+  - Formatted to deliver empathetic, medical information (never diagnosing).
+  - Enforces strict factual constraints and appends medical disclaimers.
+* Legal & Government Schemes Agent (legal_agent.py):
+  - Expert on welfare schemes, citizen rights, and eligibility calculations.
+  - Includes a regex-based calculator parser to compute annual income statements.
+* Agriculture Agent (agri_agent.py):
+  - Delivers crop planning, soil health, and pest control advisories.
+  - Features an LLM-based MCQ quiz generator to test understanding.
+* General Tool Suite (tools/):
+  - Integrated local calculator execution, semantic vector search, and Tavily Web 
+    Search fallback when local knowledge base yields empty results.
+
+--------------------------------------------------------------------------------
+5. REFLECTIVE CRITIC LOOP (agents/critic.py)
+--------------------------------------------------------------------------------
+* Built a reflective Critic Agent that checks generated responses against retrieved
+  context chunks.
+* Configured thresholds (0.7) for Faithfulness (groundedness) and Answer Relevancy.
+* If thresholds are missed, the loop triggers a retry (up to 2 times), sending
+  detailed feedback to the orchestrator for answer revision.
+* Implemented a rule-based lexical overlap local fallback calculator to ensure
+  faithfulness checks occur even during API outages.
+
+--------------------------------------------------------------------------------
+6. USER INTERFACES (app/)
+--------------------------------------------------------------------------------
+* Chainlit Application (chainlit_app.py):
+  - Clean ChatGPT-style interface with customized styles and domain badges.
+  - Uses a local SQLite database ("chainlit.db") for user authentication and 
+    thread history persistence.
+  - Surfaces retrieved sources, relevance scores, and critic validation indicators.
+* Streamlit Application (streamlit_app.py):
+  - Multi-page dashboard with toggles to control sources, disclaimers, and quizzes.
+* Gradio Playground (gradio_app.py):
+  - Interactive playground for debugging domain classifications and raw generations.
+
+--------------------------------------------------------------------------------
+7. BENCHMARKS & EVALUATION DATASET (evaluation/)
+--------------------------------------------------------------------------------
+* Curated the TriSeva-QA dataset ("triseva_qa_dataset.json") containing ~1,393
+  annotated multilingual (English, Hindi, Hinglish) QA pairs across all three domains.
+* Built automated benchmarking tools using the Ragas framework:
+  - "ragas_eval.py" evaluates the small seed validation set (15 questions).
+  - "run_500_evals.py" executes evaluations over the 500-question dataset.
+* Ran evaluations and logged detailed results for four architectures:
+  1. TriSeva (Full Multi-Agent + Critic)
+  2. B1 - Naive RAG (Cross-Domain)
+  3. B2 - No Critic Loop
+  4. B3 - BM25 Keyword Search
+* Logs and CSV outputs are preserved under "evaluation/results/" using both
+  Claude and Sarvam-105B LLM evaluators.
+================================================================================

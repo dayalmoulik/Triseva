@@ -1,0 +1,36 @@
+# Python cache and build files
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Virtual Environments
+venv/
+ENV/
+env/
+.venv/
+.conda/
+
+# Environment configurations and logs
+.env
+logs/
+*.log
+
+# Ignore local model weights and training checkpoints (loaded from Hugging Face Hub at runtime)
+data/models/domain_router/
+
+# Local SQLite databases (Chainlit will recreate its db on launch)
+chainlit.db
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Documents and reports
+*.docx
+*.xlsx
+*.pptx
+

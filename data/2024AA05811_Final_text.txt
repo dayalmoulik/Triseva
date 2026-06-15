@@ -1,0 +1,524 @@
+=== PAGE 1 ===
+ 
+1 
+ 
+TriSeva: A Multi-Agent Retrieval-Augmented System for 
+Explainable Cross-Domain Document Question 
+Answering across Healthcare, Legal/Government, and Agriculture Domains 
+ 
+Course No.: AIMLCZG628T 
+Course Title: Dissertation / Project / Project Work 
+ 
+Dissertation / Project Work Done by: 
+Moulik Dayal 
+BITS ID: 2024AA05811 
+Degree Program: M. Tech – Artificial Intelligence & Machine Learning 
+Research Area: Agentic AI / Natural Language Processing / Multimodal Systems 
+ 
+Dissertation / Project Work carried out at: 
+Centre for Development of Advanced Computing (C-DAC), Pune 
+ 
+ 
+ 
+BIRLA INSTITUTE OF TECHNOLOGY & SCIENCE, PILANI 
+VIDYA VIHAR, PILANI, RAJASTHAN – 333031. 
+ 
+May 2026 
+ 
+ 
+
+=== PAGE 2 ===
+ 
+2 
+BIRLA INSTITUTE OF TECHNOLOGY & SCIENCE, PILANI 
+WORK INTEGRATED LEARNING PROGRAMMES (WILP) DIVISION 
+SECOND SEMESTER OF ACADEMIC YEAR 2025-2026 
+AIMLCZG628T: DISSERTATION OUTLINE 
+STUDENT ID No. 
+2024AA05811 
+NAME OF THE STUDENT 
+Moulik Dayal 
+STUDENT'S EMAIL ADDRESS 
+2024aa05811@wilp.bits-pilani@ac.in 
+STUDENT'S EMPLOYING 
+ORGANIZATION & LOCATION 
+Centre for Development of Advanced Computing (C-DAC), 
+Pune 
+SUPERVISOR'S NAME 
+Mr. Sandeep Sahane 
+SUPERVISOR'S EMPLOYING 
+ORGANIZATION & LOCATION 
+Centre for Development of Advanced Computing (C-DAC), 
+Pune 
+SUPERVISOR'S EMAIL ADDRESS 
+sandeeps@cdac.in 
+ADDITIONAL EXAMINER'S NAME 
+Mr. Devashish Tamrakar 
+ADDITIONAL EXAMINER'S 
+EMPLOYING ORGANIZATION & 
+LOCATION 
+Centre for Development of Advanced Computing (C-DAC), 
+Pune 
+ADDITIONAL EXAMINER'S EMAIL 
+ADDRESS 
+devashisht@cdac.in 
+DISSERTATION / PROJECT / PROJECT 
+WORK TITLE 
+TriSeva: A Multi-Agent Retrieval-Augmented System for 
+Explainable Cross-Domain Document Question Answering 
+across Healthcare, Legal/Government, and Agriculture 
+Domains 
+ 
+ 
+
+=== PAGE 3 ===
+ 
+3 
+Contents 
+1.  Broad Area of Work ........................................................................................................................4 
+2.  Background .....................................................................................................................................4 
+3.  Objectives ........................................................................................................................................6 
+4.  Scope of Work .................................................................................................................................8 
+5.  Plan of Work ................................................................................................................................. 10 
+6.  Literature References ................................................................................................................... 11 
+7.  Particulars of the Supervisor and Additional Examiner ............................................................... 12 
+8.  Remarks of the Supervisor ........................................................................................................... 12 
+ 
+ 
+
+=== PAGE 4 ===
+ 
+4 
+1. Broad Area of Work 
+This dissertation sits at the intersection of Agentic AI, Natural Language Processing, and Multimodal 
+Systems. The specific sub-areas addressed are: 
+• 
+Multi-agent system design using LangGraph — coordinating specialist and reflective agents 
+for multi-step question answering tasks 
+• 
+Retrieval-Augmented Generation (RAG) — combining document retrieval with language 
+model generation over domain-specific knowledge bases 
+• 
+Multimodal document processing — extracting information from scanned images such as soil 
+health cards, medical prescriptions, and government certificates using Vision-Language 
+Models 
+• 
+Automated evaluation — measuring answer faithfulness, context precision, and relevancy 
+using the RAGAS framework on a curated multilingual benchmark 
+• 
+Multilingual NLP — enabling Hindi and English query handling through cross-lingual sentence 
+embeddings 
+• 
+Explainable AI (XAI) and answer transparency — providing source attribution, retrieval 
+evidence, and execution traces so that generated answers can be verified by end users 
+ 
+2. Background 
+Retrieval-Augmented Generation has become a widely used approach for knowledge-intensive 
+question answering [Lewis et al., 2020; Gao et al., 2023]. By pairing a retrieval component over 
+indexed documents with a generative language model, RAG systems can produce more factually 
+grounded responses than pure generation. However, many implementations in the literature are 
+single-domain: a system built for medical question answering is separate from one designed for legal 
+document search, and neither supports agricultural advisory [Gao et al., 2023]. Maintaining three 
+separate systems is costly, and none of them can answer questions that naturally span domains — for 
+example, a farmer asking both about a crop disease and the government subsidy available for it. 
+A second limitation is that many deployed RAG systems offer limited transparency. The user receives 
+a generated answer but no indication of which source document it came from, how confident the 
+system is, or what retrieval steps were taken. In domains like healthcare and legal services, this is a 
+practical problem: users, auditors, and oversight bodies often need to verify a claim rather than simply 
+accept it. Recent work on self-reflective RAG [Asai et al., 2024] and GraphRAG [Edge et al., 2024] has 
+begun to address quality issues, but Explainable AI (XAI) — specifically source attribution, confidence 
+scoring, and retrieval provenance — remains a gap in cross-domain RAG systems. 
+Language coverage is another concern. India has over 140 million farming households, and a large 
+share of rural users accessing government welfare schemes and agricultural advisories communicate 
+primarily in Hindi. Almost all existing RAG deployments are English-only, which limits their usefulness 
+for these populations. 
+Finally, there is no automatic mechanism in standard RAG pipelines to detect and remediate low-
+quality outputs before they reach the user. A system that can route a query to the right domain KB, 
+retrieve relevant passages, generate an answer, and then evaluate its own output — re-querying if 
+
+=== PAGE 5 ===
+ 
+5 
+the confidence is low — would address this gap. Work on self-RAG [Asai et al., 2024] and agent-based 
+orchestration [Yao et al., 2023] provides the conceptual basis for this. 
+This dissertation proposes TriSeva, a six-agent LangGraph system designed to address the above 
+limitations. It handles queries across three domains — Healthcare, Legal/Government, and Agriculture 
+— in both English and Hindi, produces source-attributed answers with execution traces and retrieval 
+evidence, and uses a dedicated Critic Agent to check output quality before delivery. The Agriculture 
+domain is chosen specifically because of its relevance to the Indian rural context and C-DAC Pune’s 
+active AgriTech work. The system is evaluated on the TriSeva-QA benchmark using RAGAS metrics, 
+with results expected to fall in the range of recently reported multilingual RAG baselines. 
+ 
+ 
+ 
+
+=== PAGE 6 ===
+ 
+6 
+3. Objectives 
+The objectives of this dissertation are as follows: 
+• 
+System design and implementation: Build a six-agent LangGraph system comprising a Domain 
+Router, three domain Specialist Agents (Healthcare, Legal/Government, Agriculture), a 
+Reflective Critic Agent, and a Memory Agent. The agents are connected via a typed StateGraph 
+with conditional edge routing. 
+• 
+Domain routing: Fine-tune a DistilBERT classifier to route incoming queries to the correct 
+domain knowledge base, with a user-override option. The target is greater than 90% 
+classification accuracy on the TriSeva-QA evaluation set, in line with similar domain 
+classification results in the literature. 
+• 
+Multimodal document processing: Integrate InternVL2-8B (4-bit quantized) to extract 
+structured information from scanned documents — specifically soil health cards, medical 
+prescriptions, and government certificates. Inference is run on Kaggle free-tier T4 GPU. 
+• 
+Cross-lingual retrieval: Build a ChromaDB vector store with LaBSE embeddings over 
+approximately 45,000 document chunks, supporting both English and Hindi queries without 
+separate language-specific pipelines. 
+• 
+Reflective evaluation loop: Implement a Critic Agent that checks each generated answer 
+against its retrieved context using RAGAS Faithfulness as a heuristic signal. When the score 
+falls below a configurable threshold, the agent triggers a re-query rather than passing the 
+answer to the user. 
+• 
+Answer transparency (XAI): Surface the source document, chunk reference, and retrieval 
+similarity score alongside every answer. Workflow traces and retrieval provenance logs are 
+recorded via LangSmith and made accessible in the Chainlit UI — these are agent execution 
+logs and retrieved context records, not internal model reasoning tokens. Out-of-scope queries 
+are flagged explicitly rather than answered speculatively. 
+• 
+Evaluation: Measure Faithfulness, Context Precision, and Answer Relevancy on the TriSeva-
+QA benchmark using RAGAS. Conduct ablation studies to isolate the contribution of the 
+routing module (RQ1), the vision component (RQ2), and the Critic Agent (RQ3). Target scores 
+are informed by RAGAS evaluations in recent literature and are treated as aspirational rather 
+than guaranteed: Faithfulness approximately 0.75, Context Precision approximately 0.90, 
+Answer Relevancy approximately 0.90. 
+• 
+Benchmark dataset: Curate and release TriSeva-QA, a multilingual QA dataset distributed 
+across Healthcare, Legal/Government, and Agriculture. An initial annotated set of 
+approximately 188 pairs (Healthcare ≈64, Legal/Government ≈62, Agriculture ≈62) in English 
+and Hindi with easy/medium/hard difficulty labels will be compiled first; the full benchmark 
+targets approximately 500 pairs by final submission. The dataset will be released on 
+HuggingFace Datasets under CC-BY 4.0. 
+• 
+Deployment: Deploy the complete system as a publicly accessible Chainlit / Streamlit 
+application on HuggingFace Spaces, with LangSmith execution traces available during the viva 
+demonstration. 
+ 
+
+=== PAGE 7 ===
+ 
+7 
+Illustrative Use Cases 
+The following ten scenarios ground the above objectives in concrete user interactions. Use Cases 1–5 
+represent core system functionality to be demonstrated at Mid-Semester Viva. Use Cases 6–10 cover 
+multimodal, ablation, and cross-domain functionality for the Final Viva. 
+ 
+Use Cases 1–5: Mid-Semester Viva 
+• 
+UC-1 — Drug interaction query (Healthcare): A patient’s family member submits a Hindi 
+query asking whether two common medications can be taken together. The Healthcare 
+Specialist retrieves the relevant MedlinePlus contraindication entry, the Critic evaluates the 
+response, and the Chainlit UI shows the source chunk and retrieval confidence score alongside 
+the answer. 
+• 
+UC-2 — Welfare scheme eligibility (Legal/Government): A citizen asks in English about land-
+holding eligibility for PM-KISAN. The Legal Specialist retrieves the relevant criteria from the 
+MyScheme.gov.in knowledge base and returns the answer with the source section reference. 
+• 
+UC-3 — Crop advisory (Agriculture): A farmer submits a Hindi query: ‘Meri gehun ki fasal mein 
+pila rang aa raha hai, kya karna chahiye?’ (My wheat crop is yellowing — what should I do?). 
+The Agriculture Specialist retrieves an ICAR advisory and returns a recommended course of 
+action with the source document cited. 
+• 
+UC-4 — RTI timeline query (Legal/Government): A government officer asks about the 
+response timeline under RTI Section 7. The Legal Specialist returns the clause-level answer 
+from the India Code knowledge base with section number and chunk identifier visible in the 
+transparency panel. 
+• 
+UC-5 — Cross-domain agricultural scheme query: A farmer asks in one message about PM-
+KISAN income eligibility and which crops qualify for MSP. The Domain Router identifies this as 
+a cross-domain request and invokes both the Legal/Government and Agriculture Specialists. 
+The final answer presents both source chains. 
+ 
+Use Cases 6–10: Final Viva 
+• 
+UC-6 — Soil Health Card OCR (Multimodal Agriculture): A farmer uploads a photograph of a 
+Soil Health Card. InternVL2-8B extracts the nutrient readings (N, P, K, pH), and the Agriculture 
+Specialist returns fertiliser recommendations based on those values, citing the relevant ICAR 
+guidelines. 
+• 
+UC-7 — Scanned prescription query (Multimodal Healthcare): A user uploads a scanned 
+prescription and asks whether any of the listed drugs are contraindicated. The vision module 
+extracts the drug names; the Healthcare Specialist queries MedlinePlus and returns the result 
+with extraction trace visible. 
+• 
+UC-8 — Critic Agent ablation (RQ3): The same query is answered with and without the Critic 
+Agent active, and the RAGAS Faithfulness scores are shown side by side. This is the primary 
+validation for RQ3, with an expected improvement of at least 0.05 in the Critic-active 
+condition. 
+
+=== PAGE 8 ===
+ 
+8 
+• 
+UC-9 — Agricultural scheme + land record verification (cross-domain multimodal): A farmer 
+first asks about PM-KISAN eligibility, then uploads a scanned land ownership record and asks 
+whether it meets the scheme’s land-holding criterion. The Memory Agent preserves context 
+between turns; the Vision Module reads the document; and the Legal/Government and 
+Agriculture Specialists collaborate on the answer. 
+• 
+UC-10 — Multi-turn cross-domain stress test: A policy researcher asks three consecutive 
+questions spanning Healthcare, Legal/Government, and Agriculture. The Memory Agent 
+maintains context throughout; the router switches domains per turn; and the execution trace 
+for the full session is displayed. 
+ 
+ 
+ 
+
+=== PAGE 9 ===
+ 
+9 
+4. Scope of Work 
+The following work will be carried out independently as part of this dissertation: 
+• 
+Design and implementation of the six-agent LangGraph StateGraph, including the Domain 
+Router, three Specialist Agents (Healthcare, Legal/Government, Agriculture), Reflective Critic 
+Agent, and Memory Agent, with conditional edge routing and a re-query loop 
+• 
+Construction of three domain knowledge bases from publicly available sources: MedlinePlus 
+and NHP India for Healthcare; MyScheme.gov.in and India Code for Legal/Government; ICAR 
+crop advisories, Kisan Call Centre FAQs, PM-KISAN documents, and Soil Health Card guidelines 
+for Agriculture. The combined KB is expected to contain approximately 45,000 text chunks 
+indexed in ChromaDB with LaBSE embeddings 
+• 
+Fine-tuning of a DistilBERT classifier for domain routing across the three domains, with a 
+classification accuracy target of greater than 90% on the evaluation set 
+• 
+Integration of InternVL2-8B (4-bit quantized, Kaggle T4 free tier) for processing scanned 
+documents, with specific focus on Soil Health Card extraction and medical prescription OCR 
+• 
+Implementation of Explainable AI (XAI) and answer transparency features: source attribution 
+with document chunk and page reference, per-response RAGAS Faithfulness scoring, 
+execution trace logging via LangSmith, and out-of-scope query flagging 
+• 
+Curation of the TriSeva-QA dataset: an initial annotated set of approximately 188 QA pairs 
+(Healthcare ≈64, Legal/Government ≈62, Agriculture ≈62) in English and Hindi, with 
+easy/medium/hard difficulty splits, growing to a target of approximately 500 pairs by final 
+submission. The dataset will include image-based queries for multimodal evaluation 
+• 
+Automated evaluation using RAGAS metrics on the TriSeva-QA benchmark, along with 
+ablation experiments addressing RQ1 (routing contribution), RQ2 (vision module 
+contribution), and RQ3 (Critic Agent contribution) 
+• 
+Deployment of the system as a publicly accessible Chainlit / Streamlit application on 
+HuggingFace Spaces 
+ 
+The following are explicitly outside the scope of this dissertation: fine-tuning of the core language 
+model backbone; mobile application development; real-time data streams such as live mandi prices 
+or weather feeds; and private enterprise deployment. 
+ 
+Expected Outcomes and Deliverables 
+The following deliverables are planned, each with a measurable criterion: 
+• 
+D1 — Six-agent LangGraph system: Deployed on HuggingFace Spaces, tested across all three 
+domains with Tavily web search fallback and multi-turn memory. 
+• 
+D2 — TriSeva-QA dataset: Approximately 500 multilingual QA pairs across three domains in 
+English and Hindi, published on HuggingFace Datasets under CC-BY 4.0. 
+• 
+D3 — RAGAS evaluation report: Faithfulness, Answer Relevancy, and Context Precision scores 
+on TriSeva-QA, with ablation results for RQ1–RQ3. 
+
+=== PAGE 10 ===
+ 
+10 
+• 
+D4 — Explainable AI (XAI) layer: Source citations, retrieval scores, and execution traces 
+surfaced in the Chainlit UI and LangSmith dashboard for every answer. 
+• 
+D5 — Multimodal pipeline: Validated OCR extraction from Soil Health Cards, medical 
+prescriptions, and government certificates. 
+• 
+D6 — DistilBERT domain router: Trained classifier with greater than 90% domain routing 
+accuracy and per-query confidence output. 
+ 
+ 
+ 
+
+=== PAGE 11 ===
+ 
+11 
+5. Plan of Work 
+ 
+Phase 
+Duration 
+Work to be Done 
+Dissertation 
+Outline 
+25/04/2026 – 
+10/05/2026 
+Literature review; system architecture design; 
+knowledge base source identification; domain 
+selection rationale; submission of Outline on VIVA 
+Portal; book Outline Viva (10 mins) 
+Knowledge Base & 
+RAG Core 
+11/05/2026 – 
+31/05/2026 
+Download and chunk all three domain KBs; build 
+ChromaDB with LaBSE embeddings; implement and 
+test text-only RAG pipeline across all domains; begin 
+TriSeva-QA annotation (target: ~188 initial pairs) 
+Domain Router & 
+LangGraph 
+Skeleton 
+01/06/2026 – 
+14/06/2026 
+Fine-tune DistilBERT domain classifier (target: >90% 
+accuracy); build LangGraph StateGraph skeleton; 
+integrate router with conditional edge routing; verify 
+routing across all three domain nodes 
+Specialist Agents & 
+Vision Module 
+15/06/2026 – 
+21/06/2026 
+Implement ReAct loops for all three Specialist Agents; 
+integrate InternVL2-8B with Soil Health Card and 
+prescription OCR pipelines; test end-to-end 
+multimodal queries; grow TriSeva-QA toward 500 
+pairs 
+Mid-Semester 
+Submission 
+22/06/2026 – 
+05/07/2026 
+Add Critic Agent and Memory Agent; implement 
+source attribution and execution trace logging; run 
+RQ1 baseline experiments; write Mid-Semester 
+Report; Turnitin check (≤25%); submit on VIVA Portal; 
+book Mid-Semester Viva (15 mins) 
+Evaluation & 
+Experiments 
+06/07/2026 – 
+19/07/2026 
+Run all ablation studies (RQ1–RQ3); compute RAGAS 
+metrics on TriSeva-QA; complete dataset to ~500 
+pairs; finalise transparency layer 
+Deployment & 
+Dataset Release 
+20/07/2026 – 
+27/07/2026 
+Deploy Chainlit/Streamlit app on HuggingFace 
+Spaces; configure LangSmith for viva tracing; upload 
+TriSeva-QA to HuggingFace Datasets under CC-BY 4.0 
+Final Report & Viva 
+28/07/2026 – 
+02/08/2026 
+Write dissertation report (65–75 pages); Turnitin 
+check (≤20%); submit Final Report, Presentation, and 
+Mentor Evaluation on VIVA Portal; book Final Viva 
+(30 mins: 20-min presentation + 10-min Q&A) 
+ 
+ 
+ 
+
+=== PAGE 12 ===
+ 
+12 
+6. Literature References 
+ 
+[1] P. Lewis, E. Perez, A. Piktus et al., "Retrieval-Augmented Generation for Knowledge-Intensive NLP 
+Tasks," Advances in Neural Information Processing Systems (NeurIPS), 2020. 
+[2] Y. Gao, Y. Xiong, X. Gao et al., "Retrieval-Augmented Generation for Large Language Models: A 
+Survey," arXiv:2312.10997, 2023. 
+[3] A. Asai, Z. Wu, Y. Wang, A. Sil, H. Hajishirzi, "Self-RAG: Learning to Retrieve, Generate, and Critique 
+through Self-Reflection," ICLR, 2024. 
+[4] M. Edge, H. Trinh, N. Cheng et al., "From Local to Global: A Graph RAG Approach to Query-Focused 
+Summarization," arXiv:2404.16130, Microsoft Research, 2024. 
+[5] S. Es, J. James, L. Espinosa-Anke, and S. Schockaert, "RAGAS: Automated Evaluation of Retrieval 
+Augmented Generation," EACL, 2024. 
+[6] S. Yao, J. Zhao, D. Yu et al., "ReAct: Synergizing Reasoning and Acting in Language Models," ICLR, 
+2023. 
+[7] N. Shinn, F. Cassano, E. Berman, A. Gopinath, K. Narasimhan, S. Yao, "Reflexion: Language Agents 
+with Verbal Reinforcement Learning," NeurIPS, 2023. 
+[8] L. Wang, C. Ma, X. Feng et al., "A Survey on Large Language Model based Autonomous Agents," 
+Frontiers of Computer Science, 2024. 
+[9] C. Chen, J. Wu, S. Liu et al., "InternVL: Scaling up Vision Foundation Models and Aligning for Generic 
+Visual-Linguistic Tasks," IEEE/CVF CVPR, 2024. 
+[10] F. Feng, Y. Yang, D. Cer, N. Arivazhagan, and W. Wang, "Language-Agnostic BERT Sentence 
+Embedding (LaBSE)," arXiv:2007.01852, 2020. 
+[11] V. Sanh, L. Debut, J. Chaumond, and T. Wolf, "DistilBERT, a distilled version of BERT: smaller, faster, 
+cheaper and lighter," arXiv:1910.01108, 2019. 
+[12] K. Doddapaneni, R. Kohli, A. Khanuja et al., "IndicBERT v2: A State-of-the-Art Multilingual Model 
+for Indian Languages," arXiv:2212.05409, 2022. 
+[13] A. Kunchukuttan, D. Kakwani, S. Golla et al., "AI4Bharat-IndicNLP Corpus: Monolingual Corpora 
+and Word Embeddings for Indic Languages," EMNLP Findings, 2020. 
+[14] Z. Ji, N. Lee, R. Frieske et al., "Survey of Hallucination in Natural Language Generation," ACM 
+Computing Surveys, 2023. 
+[15] J. Wei, X. Wang, D. Schuurmans et al., "Chain-of-Thought Prompting Elicits Reasoning in Large 
+Language Models," NeurIPS, 2022. 
+[16] A. Vaswani, N. Shazeer, N. Parmar et al., "Attention Is All You Need," NeurIPS, 2017. 
+[17] N. Reimers and I. Gurevych, "Sentence-BERT: Sentence Embeddings using Siamese BERT-
+Networks," EMNLP, 2019. 
+[18] V. Karpukhin, B. Oguz, S. Min et al., "Dense Passage Retrieval for Open-Domain Question 
+Answering," EMNLP, 2020. 
+[19] A. Kamilaris and F. X. Prenafeta-Boldu, "Deep Learning in Agriculture: A Survey," Computers and 
+Electronics in Agriculture, vol. 147, pp. 70–90, 2018. 
+ 
+
+=== PAGE 13 ===
+ 
+13 
+7. Particulars of the Supervisor and Additional Examiner 
+ 
+ 
+Supervisor 
+Additional Examiner 
+Name 
+Mr. Sandeep Sahane 
+Mr. Devashish Tamrakar 
+Qualification 
+M.Tech (Software Systems) 
+M.Tech (Computer 
+Engineering) 
+Designation 
+Scientist E 
+Scientist E 
+Employing Organization and 
+Location 
+Centre for Development of 
+Advanced Computing (C-DAC), 
+Pune 
+Centre for Development of 
+Advanced Computing (C-DAC), 
+Pune 
+Phone No. (with STD Code) 
+02025503213 
+02025503144 
+Email Address 
+sandeeps@cdac.in 
+devashisht@cdac.in 
+ 
+8. Remarks of the Supervisor 
+Mr. Moulik Dayal has proposed a highly sophisticated, production-grade architecture that bridges the 
+gap between Agentic Workflows and Multimodal RAG (Retrieval-Augmented Generation). The scope 
+is ambitious yet methodologically sound, demonstrating a deep understanding of current State-of-
+the-Art frameworks like LangGraph and InternVL2. 
+The dissertation goals are clearly defined, with a well-demarcated boundary between what is being 
+built i.e. the agentic system and benchmarks and what is excluded i.e. core LLM fine-tuning. 
+ 
+Information about the Supervisor: 
+ 
+ 
+     
+ 
+    
+ 
+Signature of Student 
+Signature of Supervisor 
+Signature of Additional 
+Examiner 
+Name: Moulik Dayal 
+Name: Sandeep Sahane 
+Name: Devashish Tamrakar 
+ 

@@ -1,0 +1,460 @@
+user_input,retrieved_contexts,response,reference,faithfulness,answer_relevancy,context_precision
+What is the normal haemoglobin level for adult men?,"['Normal haemoglobin levels: Men 13.5-17.5 g/dL, Women 12.0-15.5 g/dL, Children 11.0-16.0 g/dL. Low haemoglobin is called anaemia. Common causes include iron deficiency, vitamin B12 deficiency, and chronic disease. Symptoms include fatigue, weakness, pale skin, and shortness of breath.', 'Normal blood pressure is below 120/80 mmHg. High blood pressure (hypertension) is 130/80 mmHg or above. Low blood pressure (hypotension) is below 90/60 mmHg. High blood pressure increases risk of heart disease, stroke, and kidney failure. Lifestyle changes include reducing salt, exercising regularly, and limiting alcohol.', 'Creatinine is a waste product filtered by kidneys. Normal creatinine levels: Men 0.74-1.35 mg/dL, Women 0.59-1.04 mg/dL. High creatinine indicates reduced kidney function. eGFR (estimated glomerular filtration rate) above 60 is considered normal kidney function. Below 60 for 3 months indicates chronic kidney disease.', 'Total cholesterol should be below 200 mg/dL. LDL (bad) cholesterol should be below 100 mg/dL. HDL (good) cholesterol should be above 40 mg/dL for men and 50 mg/dL for women. Triglycerides should be below 150 mg/dL. High cholesterol increases risk of heart disease and stroke.', 'Normal TSH (thyroid stimulating hormone) range is 0.4 to 4.0 mIU/L. TSH above 4.0 suggests hypothyroidism (underactive thyroid). TSH below 0.4 suggests hyperthyroidism (overactive thyroid). Common hypothyroid symptoms: fatigue, weight gain, cold intolerance, constipation. Common hyperthyroid symptoms: weight loss, rapid heartbeat, anxiety, heat intolerance.']","# Normal Haemoglobin Level for Adult Men
+
+**Direct Answer:**
+The normal haemoglobin level for adult men is **13.5-17.5 g/dL** (grams per deciliter).
+
+## Relevant Medical Context
+
+Haemoglobin is a protein in red blood cells that carries oxygen throughout your body. It's essential for:
+- Delivering oxygen to all your organs and tissues
+- Maintaining energy levels
+- Supporting overall health
+
+If your haemoglobin falls below 13.5 g/dL, it's considered **low haemoglobin or anaemia**.
+
+## What to Watch Out For
+
+**Common causes of low haemoglobin include:**
+- Iron deficiency
+- Vitamin B12 deficiency
+- Chronic diseases
+
+**Symptoms of low haemoglobin:**
+- Persistent fatigue and weakness
+- Pale skin
+- Shortness of breath
+- Dizziness
+
+If you experience any of these symptoms, it's important to get your haemoglobin levels checked through a blood test.
+
+---
+
+**Please consult a qualified doctor for personal medical advice.** A doctor can interpret your specific haemoglobin results in context with your overall health and recommend appropriate treatment if needed.",The normal haemoglobin level for adult men is 13.5 to 17.5 g/dL.,,0.9999999999999997,0.9999999999
+What are the symptoms of anaemia?,"['Normal haemoglobin levels: Men 13.5-17.5 g/dL, Women 12.0-15.5 g/dL, Children 11.0-16.0 g/dL. Low haemoglobin is called anaemia. Common causes include iron deficiency, vitamin B12 deficiency, and chronic disease. Symptoms include fatigue, weakness, pale skin, and shortness of breath.', 'Normal TSH (thyroid stimulating hormone) range is 0.4 to 4.0 mIU/L. TSH above 4.0 suggests hypothyroidism (underactive thyroid). TSH below 0.4 suggests hyperthyroidism (overactive thyroid). Common hypothyroid symptoms: fatigue, weight gain, cold intolerance, constipation. Common hyperthyroid symptoms: weight loss, rapid heartbeat, anxiety, heat intolerance.', 'COVID-19 symptoms include fever, cough, fatigue, loss of taste or smell, sore throat, headache, and difficulty breathing. Isolate if symptomatic. Seek emergency care for severe breathing difficulty, persistent chest pain, confusion, or bluish lips. Vaccination is the best protection. Wear masks in crowded areas and wash hands frequently.', 'Normal blood pressure is below 120/80 mmHg. High blood pressure (hypertension) is 130/80 mmHg or above. Low blood pressure (hypotension) is below 90/60 mmHg. High blood pressure increases risk of heart disease, stroke, and kidney failure. Lifestyle changes include reducing salt, exercising regularly, and limiting alcohol.', 'Metformin is a medication used to treat type 2 diabetes. It works by reducing glucose production in the liver and improving insulin sensitivity. Common side effects include nausea, diarrhoea, and stomach upset. It should be taken with meals. Normal fasting blood sugar: 70-100 mg/dL. Diabetic range: above 126 mg/dL fasting.']","# Understanding Anaemia Symptoms
+
+## Direct Answer
+Anaemia occurs when your body doesn't have enough healthy red blood cells or haemoglobin to carry oxygen effectively. The main symptoms include:
+
+- **Fatigue** (extreme tiredness)
+- **Weakness** (feeling physically drained)
+- **Pale skin** (loss of normal color)
+- **Shortness of breath** (difficulty breathing, especially during activity)
+
+## Medical Context
+**Normal haemoglobin levels** should be:
+- Men: 13.5-17.5 g/dL
+- Women: 12.0-15.5 g/dL
+- Children: 11.0-16.0 g/dL
+
+When haemoglobin falls below these ranges, your body struggles to deliver oxygen to tissues and organs, causing the symptoms mentioned above.
+
+**Common causes of anaemia include:**
+- Iron deficiency
+- Vitamin B12 deficiency
+- Chronic diseases
+
+## What to Watch Out For
+If you experience persistent fatigue, weakness, or shortness of breath, especially during normal daily activities, it's important to get checked. These symptoms can affect your quality of life and may indicate an underlying condition that needs treatment.
+
+---
+
+**Please consult a qualified doctor for personal medical advice.** A doctor can perform blood tests to check your haemoglobin levels and identify the specific cause of anaemia, then recommend appropriate treatment.","Symptoms of anaemia include fatigue, weakness, pale skin, and shortness of breath.",,0.9852941182907996,0.9999999999
+What is the normal blood pressure range?,"['Normal blood pressure is below 120/80 mmHg. High blood pressure (hypertension) is 130/80 mmHg or above. Low blood pressure (hypotension) is below 90/60 mmHg. High blood pressure increases risk of heart disease, stroke, and kidney failure. Lifestyle changes include reducing salt, exercising regularly, and limiting alcohol.', 'Normal haemoglobin levels: Men 13.5-17.5 g/dL, Women 12.0-15.5 g/dL, Children 11.0-16.0 g/dL. Low haemoglobin is called anaemia. Common causes include iron deficiency, vitamin B12 deficiency, and chronic disease. Symptoms include fatigue, weakness, pale skin, and shortness of breath.', 'Total cholesterol should be below 200 mg/dL. LDL (bad) cholesterol should be below 100 mg/dL. HDL (good) cholesterol should be above 40 mg/dL for men and 50 mg/dL for women. Triglycerides should be below 150 mg/dL. High cholesterol increases risk of heart disease and stroke.', 'Creatinine is a waste product filtered by kidneys. Normal creatinine levels: Men 0.74-1.35 mg/dL, Women 0.59-1.04 mg/dL. High creatinine indicates reduced kidney function. eGFR (estimated glomerular filtration rate) above 60 is considered normal kidney function. Below 60 for 3 months indicates chronic kidney disease.', 'Normal TSH (thyroid stimulating hormone) range is 0.4 to 4.0 mIU/L. TSH above 4.0 suggests hypothyroidism (underactive thyroid). TSH below 0.4 suggests hyperthyroidism (overactive thyroid). Common hypothyroid symptoms: fatigue, weight gain, cold intolerance, constipation. Common hyperthyroid symptoms: weight loss, rapid heartbeat, anxiety, heat intolerance.']","# Normal Blood Pressure Range
+
+**Direct Answer:**
+Normal blood pressure is **below 120/80 mmHg** (millimeters of mercury).
+
+## Understanding Blood Pressure Numbers
+
+Blood pressure is measured as two numbers:
+- **First number (Systolic):** Pressure when your heart beats
+- **Second number (Diastolic):** Pressure when your heart rests between beats
+
+## Blood Pressure Categories
+
+| Category | Reading |
+|----------|---------|
+| **Normal** | Below 120/80 mmHg |
+| **High Blood Pressure (Hypertension)** | 130/80 mmHg or above |
+| **Low Blood Pressure (Hypotension)** | Below 90/60 mmHg |
+
+## Why This Matters
+
+High blood pressure increases your risk of serious conditions like:
+- Heart disease
+- Stroke
+- Kidney failure
+
+## Lifestyle Tips to Maintain Healthy Blood Pressure
+
+- Reduce salt intake in your diet
+- Exercise regularly
+- Limit alcohol consumption
+- Manage stress
+- Maintain a healthy weight
+
+**Please consult a qualified doctor for personal medical advice.** They can assess your individual blood pressure readings and recommend appropriate management strategies based on your health status.",Normal blood pressure is below 120/80 mmHg.,,0.9999999999998153,0.9999999999
+What does a high TSH level indicate?,"['Normal TSH (thyroid stimulating hormone) range is 0.4 to 4.0 mIU/L. TSH above 4.0 suggests hypothyroidism (underactive thyroid). TSH below 0.4 suggests hyperthyroidism (overactive thyroid). Common hypothyroid symptoms: fatigue, weight gain, cold intolerance, constipation. Common hyperthyroid symptoms: weight loss, rapid heartbeat, anxiety, heat intolerance.', 'Creatinine is a waste product filtered by kidneys. Normal creatinine levels: Men 0.74-1.35 mg/dL, Women 0.59-1.04 mg/dL. High creatinine indicates reduced kidney function. eGFR (estimated glomerular filtration rate) above 60 is considered normal kidney function. Below 60 for 3 months indicates chronic kidney disease.', 'Normal haemoglobin levels: Men 13.5-17.5 g/dL, Women 12.0-15.5 g/dL, Children 11.0-16.0 g/dL. Low haemoglobin is called anaemia. Common causes include iron deficiency, vitamin B12 deficiency, and chronic disease. Symptoms include fatigue, weakness, pale skin, and shortness of breath.', 'Normal blood pressure is below 120/80 mmHg. High blood pressure (hypertension) is 130/80 mmHg or above. Low blood pressure (hypotension) is below 90/60 mmHg. High blood pressure increases risk of heart disease, stroke, and kidney failure. Lifestyle changes include reducing salt, exercising regularly, and limiting alcohol.', 'Total cholesterol should be below 200 mg/dL. LDL (bad) cholesterol should be below 100 mg/dL. HDL (good) cholesterol should be above 40 mg/dL for men and 50 mg/dL for women. Triglycerides should be below 150 mg/dL. High cholesterol increases risk of heart disease and stroke.']","# Understanding High TSH Levels
+
+## Direct Answer
+A high TSH level (above 4.0 mIU/L) indicates **hypothyroidism**, which means your thyroid gland is underactive and not producing enough thyroid hormones.
+
+## Medical Context
+Your thyroid is a gland that controls your metabolism and energy levels. When it's underactive, your body doesn't get enough thyroid hormones, so your pituitary gland produces more TSH (thyroid stimulating hormone) to try to stimulate the thyroid into working harder. This is why TSH levels go up when thyroid function is low.
+
+## Common Symptoms to Watch For
+If you have high TSH, you might experience:
+- **Fatigue** and low energy
+- **Weight gain** without obvious cause
+- **Cold intolerance** (feeling cold easily)
+- **Constipation**
+- Dry skin and hair loss
+- Slow metabolism
+
+## What to Do
+If your TSH test shows high levels, it's important to:
+- Get a complete thyroid evaluation from your doctor
+- Discuss your symptoms with them
+- Follow up with appropriate treatment if needed
+
+**Please consult a qualified doctor for personal medical advice.** They can confirm the diagnosis with additional tests and recommend the right treatment plan for you.","A TSH level above 4.0 mIU/L suggests hypothyroidism, meaning the thyroid gland is underactive.",,0.99999999999977,0.9999999999
+What is the normal fasting blood sugar range?,"['Metformin is a medication used to treat type 2 diabetes. It works by reducing glucose production in the liver and improving insulin sensitivity. Common side effects include nausea, diarrhoea, and stomach upset. It should be taken with meals. Normal fasting blood sugar: 70-100 mg/dL. Diabetic range: above 126 mg/dL fasting.', 'Normal blood pressure is below 120/80 mmHg. High blood pressure (hypertension) is 130/80 mmHg or above. Low blood pressure (hypotension) is below 90/60 mmHg. High blood pressure increases risk of heart disease, stroke, and kidney failure. Lifestyle changes include reducing salt, exercising regularly, and limiting alcohol.', 'Total cholesterol should be below 200 mg/dL. LDL (bad) cholesterol should be below 100 mg/dL. HDL (good) cholesterol should be above 40 mg/dL for men and 50 mg/dL for women. Triglycerides should be below 150 mg/dL. High cholesterol increases risk of heart disease and stroke.', 'Normal haemoglobin levels: Men 13.5-17.5 g/dL, Women 12.0-15.5 g/dL, Children 11.0-16.0 g/dL. Low haemoglobin is called anaemia. Common causes include iron deficiency, vitamin B12 deficiency, and chronic disease. Symptoms include fatigue, weakness, pale skin, and shortness of breath.', 'Normal TSH (thyroid stimulating hormone) range is 0.4 to 4.0 mIU/L. TSH above 4.0 suggests hypothyroidism (underactive thyroid). TSH below 0.4 suggests hyperthyroidism (overactive thyroid). Common hypothyroid symptoms: fatigue, weight gain, cold intolerance, constipation. Common hyperthyroid symptoms: weight loss, rapid heartbeat, anxiety, heat intolerance.']","# Normal Fasting Blood Sugar Range
+
+**Direct Answer:**
+The normal fasting blood sugar range is **70-100 mg/dL** (milligrams per deciliter).
+
+## Relevant Medical Context
+
+Fasting blood sugar is measured after you haven't eaten for at least 8 hours, typically in the morning before breakfast. This measurement helps doctors assess how well your body controls blood glucose levels.
+
+**Blood Sugar Ranges:**
+- **Normal:** 70-100 mg/dL
+- **Diabetic range:** Above 126 mg/dL (fasting)
+
+## What to Watch Out For
+
+If your fasting blood sugar is consistently above 126 mg/dL, it may indicate type 2 diabetes or prediabetes. Regular monitoring is important if you have risk factors like family history of diabetes, obesity, or sedentary lifestyle.
+
+If your blood sugar drops below 70 mg/dL, you may experience symptoms like dizziness, shakiness, or sweating — this is called hypoglycemia and requires immediate attention.
+
+---
+
+**Please consult a qualified doctor for personal medical advice.** They can interpret your individual results and recommend appropriate lifestyle changes or treatment if needed.",Normal fasting blood sugar is 70 to 100 mg/dL.,,,0.9999999999
+What is the annual benefit amount under PM Kisan scheme?,"['PM Kisan Samman Nidhi (PM-KISAN) provides income support of Rs 6000 per year to farmer families in three equal instalments. Eligibility: small and marginal farmer families with combined landholding up to 2 hectares. Exclusions: institutional landholders, farmer families holding constitutional posts, serving or retired government employees with monthly pension above Rs 10000, income tax payers.', 'Pradhan Mantri Awas Yojana (PMAY) aims to provide affordable housing for all. Urban component provides interest subsidy on home loans. EWS category (income up to Rs 3 lakh): subsidy of 6.5% for loan up to Rs 6 lakh. LIG category (income Rs 3-6 lakh): subsidy of 6.5% for loan up to Rs 6 lakh. MIG-I (income Rs 6-12 lakh): 4% subsidy. MIG-II (income Rs 12-18 lakh): 3% subsidy.', 'Ayushman Bharat Pradhan Mantri Jan Arogya Yojana (PM-JAY) provides health cover of Rs 5 lakh per family per year for secondary and tertiary care hospitalisation. Eligible families are based on SECC 2011 database. Documents required: Aadhaar card, ration card, income certificate. Over 1700 treatment packages covered. No premium to be paid by beneficiary.', 'Pradhan Mantri Ujjwala Yojana provides free LPG connections to women from BPL households. Eligibility: women from BPL families not already having LPG connection. Documents: BPL ration card, Aadhaar card, bank account details. The scheme covers cost of security deposit, regulator, and first refill. Apply at nearest LPG distributor.', 'Mahatma Gandhi National Rural Employment Guarantee Act (MGNREGA) guarantees 100 days of wage employment per year to rural households. Eligibility: adult members of rural households willing to do unskilled manual work. Wage rate varies by state. Work must be provided within 15 days of application, failing which unemployment allowance is paid. Apply at local Gram Panchayat.']","# PM Kisan Samman Nidhi (PM-KISAN) - Annual Benefit Amount
+
+## Direct Answer
+The annual benefit under PM-KISAN is **Rs 6,000 per year**.
+
+## Benefit Structure
+- **Total Annual Amount:** Rs 6,000
+- **Payment Mode:** Disbursed in **3 equal instalments** of Rs 2,000 each
+- **Frequency:** Instalments are released periodically throughout the year
+
+## Key Eligibility Criteria
+To receive this benefit, you must be:
+- A **small or marginal farmer family**
+- With **combined landholding up to 2 hectares**
+
+## Important Exclusions
+You are **NOT eligible** if you are:
+- An institutional landholder
+- Holding a constitutional post
+- A serving or retired government employee with monthly pension above Rs 10,000
+- An income tax payer
+
+## How to Apply
+Contact your nearest:
+- Agricultural Department office
+- Common Service Centre (CSC)
+- Bank branch
+- Gram Panchayat (for rural areas)
+
+---
+
+**Source:** PM Kisan Samman Nidhi (PM-KISAN) - myscheme_pmkisan",PM Kisan provides Rs 6000 per year in three equal instalments of Rs 2000 each.,,,0.9999999999
+How many days of employment does MGNREGA guarantee?,"['Mahatma Gandhi National Rural Employment Guarantee Act (MGNREGA) guarantees 100 days of wage employment per year to rural households. Eligibility: adult members of rural households willing to do unskilled manual work. Wage rate varies by state. Work must be provided within 15 days of application, failing which unemployment allowance is paid. Apply at local Gram Panchayat.', 'Pradhan Mantri Ujjwala Yojana provides free LPG connections to women from BPL households. Eligibility: women from BPL families not already having LPG connection. Documents: BPL ration card, Aadhaar card, bank account details. The scheme covers cost of security deposit, regulator, and first refill. Apply at nearest LPG distributor.', 'Ayushman Bharat Pradhan Mantri Jan Arogya Yojana (PM-JAY) provides health cover of Rs 5 lakh per family per year for secondary and tertiary care hospitalisation. Eligible families are based on SECC 2011 database. Documents required: Aadhaar card, ration card, income certificate. Over 1700 treatment packages covered. No premium to be paid by beneficiary.', 'Pradhan Mantri Awas Yojana (PMAY) aims to provide affordable housing for all. Urban component provides interest subsidy on home loans. EWS category (income up to Rs 3 lakh): subsidy of 6.5% for loan up to Rs 6 lakh. LIG category (income Rs 3-6 lakh): subsidy of 6.5% for loan up to Rs 6 lakh. MIG-I (income Rs 6-12 lakh): 4% subsidy. MIG-II (income Rs 12-18 lakh): 3% subsidy.', 'PM Kisan Samman Nidhi (PM-KISAN) provides income support of Rs 6000 per year to farmer families in three equal instalments. Eligibility: small and marginal farmer families with combined landholding up to 2 hectares. Exclusions: institutional landholders, farmer families holding constitutional posts, serving or retired government employees with monthly pension above Rs 10000, income tax payers.']","# MGNREGA Employment Guarantee
+
+**Direct Answer:**
+MGNREGA guarantees **100 days of wage employment per year** to eligible rural households.
+
+---
+
+## Key Details:
+
+**Scheme Name:** Mahatma Gandhi National Rural Employment Guarantee Act (MGNREGA)
+
+**Employment Guarantee:**
+- 100 days of wage employment per financial year
+- Work must be provided within **15 days** of application
+- If work is not provided within this timeframe, **unemployment allowance** is paid
+
+**Eligibility:**
+- Adult members of rural households
+- Willing to do unskilled manual work
+
+**Wage Rate:**
+- Varies by state
+
+**How to Apply:**
+- Apply at your local **Gram Panchayat** (village council)
+
+---
+
+**Source:** Mahatma Gandhi National Rural Employment Guarantee Act (MGNREGA)",MGNREGA guarantees 100 days of wage employment per year to rural households.,0.8888888888888888,0.8112254049359393,0.9999999999
+What documents are needed for Ayushman Bharat?,"['Ayushman Bharat Pradhan Mantri Jan Arogya Yojana (PM-JAY) provides health cover of Rs 5 lakh per family per year for secondary and tertiary care hospitalisation. Eligible families are based on SECC 2011 database. Documents required: Aadhaar card, ration card, income certificate. Over 1700 treatment packages covered. No premium to be paid by beneficiary.', 'Pradhan Mantri Ujjwala Yojana provides free LPG connections to women from BPL households. Eligibility: women from BPL families not already having LPG connection. Documents: BPL ration card, Aadhaar card, bank account details. The scheme covers cost of security deposit, regulator, and first refill. Apply at nearest LPG distributor.', 'Pradhan Mantri Awas Yojana (PMAY) aims to provide affordable housing for all. Urban component provides interest subsidy on home loans. EWS category (income up to Rs 3 lakh): subsidy of 6.5% for loan up to Rs 6 lakh. LIG category (income Rs 3-6 lakh): subsidy of 6.5% for loan up to Rs 6 lakh. MIG-I (income Rs 6-12 lakh): 4% subsidy. MIG-II (income Rs 12-18 lakh): 3% subsidy.', 'National Scholarship Portal (NSP) provides various central scholarships for students. Pre-matric scholarships for SC/ST/OBC students from class 1 to 10. Post-matric scholarships for students above class 10. Merit-cum-means scholarships for minority students in technical and professional courses. Documents required: income certificate, caste certificate, previous marksheets, bank account details, Aadhaar.', 'Right to Information (RTI) Act 2005 allows Indian citizens to request information from public authorities. To file RTI: write application on plain paper addressed to Public Information Officer (PIO) of concerned department. Include name, address, and specific information requested. Pay fee of Rs 10 by postal order or demand draft. PIO must respond within 30 days. If unsatisfied, appeal to First Appellate Authority within 30 days.']","# Ayushman Bharat (PM-JAY) — Required Documents
+
+## Direct Answer
+To apply for **Ayushman Bharat Pradhan Mantri Jan Arogya Yojana (PM-JAY)**, you need the following documents:
+
+## Required Documents
+
+1. **Aadhaar Card** — for identity verification
+2. **Ration Card** — preferably from SECC 2011 database
+3. **Income Certificate** — to establish eligibility
+
+## Important Notes
+
+- **Eligibility is based on SECC 2011 database** — your family must be listed in this database to qualify
+- **No premium required** — the scheme is free for eligible beneficiaries
+- **Coverage**: Rs 5 lakh per family per year for secondary and tertiary care hospitalization
+- Over 1,700 treatment packages are covered
+
+## How to Apply
+
+Visit your nearest **empaneled hospital** or **Ayushman Bharat center** with the above documents. They will verify your eligibility through the SECC 2011 database and issue your health card.
+
+---
+
+**Source:** Ayushman Bharat Pradhan Mantri Jan Arogya Yojana (PM-JAY)
+
+**⚠️ Tip:** Verify your family's inclusion in SECC 2011 database first, as this is the primary eligibility criterion. You can check this on the official PM-JAY website.","Documents required for Ayushman Bharat include Aadhaar card, ration card, and income certificate.",,0.7913386965166392,0.9999999999
+What is the health cover amount under PM-JAY?,"['Ayushman Bharat Pradhan Mantri Jan Arogya Yojana (PM-JAY) provides health cover of Rs 5 lakh per family per year for secondary and tertiary care hospitalisation. Eligible families are based on SECC 2011 database. Documents required: Aadhaar card, ration card, income certificate. Over 1700 treatment packages covered. No premium to be paid by beneficiary.', 'Pradhan Mantri Awas Yojana (PMAY) aims to provide affordable housing for all. Urban component provides interest subsidy on home loans. EWS category (income up to Rs 3 lakh): subsidy of 6.5% for loan up to Rs 6 lakh. LIG category (income Rs 3-6 lakh): subsidy of 6.5% for loan up to Rs 6 lakh. MIG-I (income Rs 6-12 lakh): 4% subsidy. MIG-II (income Rs 12-18 lakh): 3% subsidy.', 'PM Kisan Samman Nidhi (PM-KISAN) provides income support of Rs 6000 per year to farmer families in three equal instalments. Eligibility: small and marginal farmer families with combined landholding up to 2 hectares. Exclusions: institutional landholders, farmer families holding constitutional posts, serving or retired government employees with monthly pension above Rs 10000, income tax payers.', 'Pradhan Mantri Ujjwala Yojana provides free LPG connections to women from BPL households. Eligibility: women from BPL families not already having LPG connection. Documents: BPL ration card, Aadhaar card, bank account details. The scheme covers cost of security deposit, regulator, and first refill. Apply at nearest LPG distributor.', 'Mahatma Gandhi National Rural Employment Guarantee Act (MGNREGA) guarantees 100 days of wage employment per year to rural households. Eligibility: adult members of rural households willing to do unskilled manual work. Wage rate varies by state. Work must be provided within 15 days of application, failing which unemployment allowance is paid. Apply at local Gram Panchayat.']","# PM-JAY Health Cover Amount
+
+**Direct Answer:**
+The health cover amount under Ayushman Bharat Pradhan Mantri Jan Arogya Yojana (PM-JAY) is **Rs 5 lakh per family per year**.
+
+## Key Details:
+
+**Coverage Scope:**
+- Applies to secondary and tertiary care hospitalisation
+- Over 1,700 treatment packages are covered under the scheme
+
+**Cost to Beneficiary:**
+- **No premium** needs to be paid by the beneficiary
+- Completely free for eligible families
+
+**Eligibility:**
+- Families identified in the SECC 2011 database
+
+**Required Documents:**
+- Aadhaar card
+- Ration card
+- Income certificate
+
+---
+
+**Source:** Ayushman Bharat Pradhan Mantri Jan Arogya Yojana (PM-JAY)
+
+---
+
+*Note: This Rs 5 lakh cover is per family per year, making it one of the world's largest government-funded health insurance schemes. If you need to check your family's eligibility or apply, you can visit the official PM-JAY portal or your nearest health center.*",Ayushman Bharat PM-JAY provides health cover of Rs 5 lakh per family per year.,0.8181818181818182,0.8398443123182636,0.9999999999
+What is the fee to file an RTI application?,"['Right to Information (RTI) Act 2005 allows Indian citizens to request information from public authorities. To file RTI: write application on plain paper addressed to Public Information Officer (PIO) of concerned department. Include name, address, and specific information requested. Pay fee of Rs 10 by postal order or demand draft. PIO must respond within 30 days. If unsatisfied, appeal to First Appellate Authority within 30 days.', 'Ayushman Bharat Pradhan Mantri Jan Arogya Yojana (PM-JAY) provides health cover of Rs 5 lakh per family per year for secondary and tertiary care hospitalisation. Eligible families are based on SECC 2011 database. Documents required: Aadhaar card, ration card, income certificate. Over 1700 treatment packages covered. No premium to be paid by beneficiary.', 'Free legal aid is available to women, SC/ST communities, persons with disabilities, victims of trafficking, children in conflict with law, persons in custody, and persons with annual income below Rs 1 lakh. Apply at District Legal Services Authority (DLSA) or State Legal Services Authority (SLSA). Services include legal advice, court representation, and mediation.', 'Pradhan Mantri Ujjwala Yojana provides free LPG connections to women from BPL households. Eligibility: women from BPL families not already having LPG connection. Documents: BPL ration card, Aadhaar card, bank account details. The scheme covers cost of security deposit, regulator, and first refill. Apply at nearest LPG distributor.', 'Pradhan Mantri Awas Yojana (PMAY) aims to provide affordable housing for all. Urban component provides interest subsidy on home loans. EWS category (income up to Rs 3 lakh): subsidy of 6.5% for loan up to Rs 6 lakh. LIG category (income Rs 3-6 lakh): subsidy of 6.5% for loan up to Rs 6 lakh. MIG-I (income Rs 6-12 lakh): 4% subsidy. MIG-II (income Rs 12-18 lakh): 3% subsidy.']","# RTI Application Fee
+
+**Direct Answer:** The fee to file an RTI application is **Rs 10**.
+
+## Key Details:
+
+**Payment Method:**
+- Pay via postal order or demand draft
+- Made payable to the Public Information Officer (PIO) of the concerned department
+
+**Application Process:**
+1. Write your application on plain paper
+2. Address it to the Public Information Officer (PIO) of the relevant department
+3. Include your name, address, and the specific information you're requesting
+4. Submit with the Rs 10 fee
+
+**Response Timeline:**
+- The PIO must respond within **30 days** of receiving your application
+- If unsatisfied with the response, you can appeal to the First Appellate Authority within 30 days
+
+---
+
+**Source:** Right to Information (RTI) Act, 2005",The fee to file an RTI application is Rs 10 by postal order or demand draft.,0.8461538461538461,0.9876168987919454,0.9999999999
+What are the four stages of mitosis?,"['Mitosis is a type of cell division where one parent cell divides to produce two genetically identical daughter cells. Stages: Prophase (chromosomes condense, spindle forms), Metaphase (chromosomes align at cell equator), Anaphase (chromatids separate to poles), Telophase (nuclear envelope reforms, cytokinesis occurs). Mitosis occurs in somatic cells for growth and repair. Result: two diploid cells with same chromosome number as parent.', 'Photosynthesis is the process by which green plants convert sunlight into food. Equation: 6CO2 + 6H2O + light energy → C6H12O6 + 6O2. Takes place in chloroplasts. Two stages: Light reactions (in thylakoid membrane, produce ATP and NADPH, split water, release oxygen) and Calvin cycle (in stroma, use ATP and NADPH to fix CO2 into glucose). Chlorophyll absorbs red and blue light, reflects green light.', 'The periodic table organises elements by atomic number. Periods are horizontal rows (1-7). Groups are vertical columns (1-18). Elements in same group have similar chemical properties and same number of valence electrons. Alkali metals (Group 1) are highly reactive. Noble gases (Group 18) are inert. Electronegativity increases across a period and decreases down a group. Atomic radius decreases across a period and increases down a group.', 'Data structures organise data for efficient access and modification. Array: fixed size, index-based access O(1). Linked list: dynamic size, sequential access O(n). Stack: LIFO, push and pop operations O(1). Queue: FIFO, enqueue and dequeue O(1). Binary search tree: sorted, search O(log n) average. Hash table: key-value pairs, average O(1) search. Sorting algorithms: Bubble sort O(n²), Merge sort O(n log n), Quick sort O(n log n) average.', 'Pythagoras theorem states that in a right-angled triangle, the square of the hypotenuse equals the sum of squares of the other two sides. Formula: a² + b² = c² where c is the hypotenuse. Converse: if a² + b² = c² then the triangle is right-angled. Common Pythagorean triplets: 3,4,5 and 5,12,13 and 8,15,17. Applications include finding distances, navigation, and construction.']","# The Four Stages of Mitosis
+
+## 1. Concept Explanation
+
+Mitosis is a type of cell division where **one parent cell divides to create two genetically identical daughter cells**. This process is essential for growth and repair in living organisms. The division happens in four distinct stages, each with specific events occurring in the cell.
+
+## 2. The Four Stages
+
+### **Stage 1: Prophase**
+- Chromosomes **condense** and become visible under a microscope
+- The **spindle fibers** begin to form from the poles of the cell
+- The nuclear envelope starts to break down
+- *Think of it as:* The cell is ""getting ready"" — chromosomes pack up and the machinery assembles
+
+### **Stage 2: Metaphase**
+- Chromosomes **align at the cell's equator** (the middle line)
+- Spindle fibers attach to the centromere of each chromosome
+- *Think of it as:* Chromosomes line up like soldiers in a row, ready for separation
+
+### **Stage 3: Anaphase**
+- **Chromatids separate** and move toward opposite poles of the cell
+- Spindle fibers pull the separated chromatids apart
+- *Think of it as:* The chromosomes are being pulled to opposite ends
+
+### **Stage 4: Telophase**
+- The **nuclear envelope reforms** around each set of chromosomes at both poles
+- Chromosomes begin to unwind and become less visible
+- **Cytokinesis** (division of cytoplasm) occurs, creating two separate cells
+
+## 3. Example
+
+Imagine a cell dividing like a school assembly:
+- **Prophase**: Students (chromosomes) gather and organize
+- **Metaphase**: Students line up in the middle of the hall
+- **Anaphase**: Students split into two groups and walk to opposite ends
+- **Telophase**: Two separate groups form with their own spaces
+
+## 4. Summary
+
+The four stages of mitosis—**Prophase, Metaphase, Anaphase, and Telophase**—work together to ensure that two identical daughter cells are created, each with the same chromosome number as the parent cell. This is crucial for growth and repair in your body!","The four stages of mitosis are Prophase, Metaphase, Anaphase, and Telophase.",,0.9752601540655252,0.9999999999
+What is the difference between RAM and ROM?,"['RAM (Random Access Memory) is volatile memory that temporarily stores data being used by the CPU. Data is lost when power is off. RAM is fast and directly accessible by CPU. ROM (Read Only Memory) is non-volatile memory that permanently stores firmware and boot instructions. Data persists without power. ROM cannot be easily modified. Types of RAM: DRAM (Dynamic RAM), SRAM (Static RAM). Types of ROM: PROM, EPROM, EEPROM.', ""Ohm's law states that current through a conductor is directly proportional to voltage across it at constant temperature. Formula: V = IR where V is voltage (volts), I is current (amperes), R is resistance (ohms). Series circuit: same current through all components, resistances add up. Parallel circuit: same voltage across all components, reciprocal of total resistance equals sum of reciprocals. Power = V × I = I²R = V²/R."", ""Newton's three laws of motion: First law (inertia): An object at rest stays at rest and an object in motion stays in motion unless acted upon by an external force. Second law: Force equals mass times acceleration (F=ma). Third law: For every action there is an equal and opposite reaction. Applications: First law explains seatbelts, second law explains rocket propulsion, third law explains how guns recoil."", 'The periodic table organises elements by atomic number. Periods are horizontal rows (1-7). Groups are vertical columns (1-18). Elements in same group have similar chemical properties and same number of valence electrons. Alkali metals (Group 1) are highly reactive. Noble gases (Group 18) are inert. Electronegativity increases across a period and decreases down a group. Atomic radius decreases across a period and increases down a group.', 'Data structures organise data for efficient access and modification. Array: fixed size, index-based access O(1). Linked list: dynamic size, sequential access O(n). Stack: LIFO, push and pop operations O(1). Queue: FIFO, enqueue and dequeue O(1). Binary search tree: sorted, search O(log n) average. Hash table: key-value pairs, average O(1) search. Sorting algorithms: Bubble sort O(n²), Merge sort O(n log n), Quick sort O(n log n) average.']","# RAM vs ROM: Understanding Computer Memory
+
+## 1. Concept Explanation
+
+RAM and ROM are two fundamental types of computer memory that serve different purposes:
+
+- **RAM (Random Access Memory)** is like your desk workspace — temporary, fast, and loses everything when you turn off the computer
+- **ROM (Read Only Memory)** is like your textbook — permanent, slower, and keeps its information even without power
+
+## 2. Key Points / Differences
+
+| Feature | RAM | ROM |
+|---------|-----|-----|
+| **Data Persistence** | Volatile (lost when power off) | Non-volatile (data stays permanently) |
+| **Speed** | Very fast | Slower than RAM |
+| **Accessibility** | CPU can read and write data | CPU can only read data |
+| **Modifiability** | Can be easily modified | Cannot be easily modified |
+| **Purpose** | Temporary storage for active programs | Permanent storage for firmware & boot instructions |
+| **Types** | DRAM, SRAM | PROM, EPROM, EEPROM |
+
+## 3. Real-Life Example
+
+Think of it like your school day:
+- **RAM** = Your notebook where you write notes during class. Once you close the notebook (shut down), the information is still there, but if you spill water on it (power loss), it's gone
+- **ROM** = Your textbook. The information is printed permanently and survives even if you close it
+
+## 4. Summary
+
+**RAM** is your computer's active working memory — fast but temporary. **ROM** is your computer's permanent instruction manual — slower but always available. Your computer needs both: RAM for running programs quickly, and ROM to know how to start up in the first place!","RAM is volatile memory that loses data when power is off, while ROM is non-volatile memory that retains data permanently.",,0.9325146252812414,0.9999999999
+What is the equation for photosynthesis?,"['Photosynthesis is the process by which green plants convert sunlight into food. Equation: 6CO2 + 6H2O + light energy → C6H12O6 + 6O2. Takes place in chloroplasts. Two stages: Light reactions (in thylakoid membrane, produce ATP and NADPH, split water, release oxygen) and Calvin cycle (in stroma, use ATP and NADPH to fix CO2 into glucose). Chlorophyll absorbs red and blue light, reflects green light.', ""Ohm's law states that current through a conductor is directly proportional to voltage across it at constant temperature. Formula: V = IR where V is voltage (volts), I is current (amperes), R is resistance (ohms). Series circuit: same current through all components, resistances add up. Parallel circuit: same voltage across all components, reciprocal of total resistance equals sum of reciprocals. Power = V × I = I²R = V²/R."", 'The periodic table organises elements by atomic number. Periods are horizontal rows (1-7). Groups are vertical columns (1-18). Elements in same group have similar chemical properties and same number of valence electrons. Alkali metals (Group 1) are highly reactive. Noble gases (Group 18) are inert. Electronegativity increases across a period and decreases down a group. Atomic radius decreases across a period and increases down a group.', 'Pythagoras theorem states that in a right-angled triangle, the square of the hypotenuse equals the sum of squares of the other two sides. Formula: a² + b² = c² where c is the hypotenuse. Converse: if a² + b² = c² then the triangle is right-angled. Common Pythagorean triplets: 3,4,5 and 5,12,13 and 8,15,17. Applications include finding distances, navigation, and construction.', ""Newton's three laws of motion: First law (inertia): An object at rest stays at rest and an object in motion stays in motion unless acted upon by an external force. Second law: Force equals mass times acceleration (F=ma). Third law: For every action there is an equal and opposite reaction. Applications: First law explains seatbelts, second law explains rocket propulsion, third law explains how guns recoil.""]","# Photosynthesis Equation - Explained
+
+## 1. Concept Explanation
+
+Photosynthesis is the amazing process where **green plants use sunlight to make their own food**. It's like nature's solar power plant! Plants take in simple raw materials and convert them into glucose (sugar) that they use for energy and growth.
+
+## 2. The Equation
+
+**6CO₂ + 6H₂O + light energy → C₆H₁₂O₆ + 6O₂**
+
+Let me break down what each part means:
+
+| Component | What it is | Role |
+|-----------|-----------|------|
+| **6CO₂** | Carbon dioxide | Input from air (plants breathe this in) |
+| **6H₂O** | Water | Input from soil (roots absorb this) |
+| **Light energy** | Sunlight | Energy source (powers the whole process) |
+| **C₆H₁₂O₆** | Glucose (sugar) | Output - food for the plant |
+| **6O₂** | Oxygen | Output - released into air (we breathe this!) |
+
+## 3. Key Points
+
+- **Location**: Happens in **chloroplasts** (special structures in green plant cells)
+- **Two stages**:
+  - **Light reactions** (in thylakoid membrane): Sunlight splits water and produces energy molecules
+  - **Calvin cycle** (in stroma): Uses that energy to convert CO₂ into glucose
+- **Why plants are green**: Chlorophyll absorbs red and blue light but **reflects green light**, so we see plants as green!
+
+## 4. Summary
+
+Plants use sunlight, water, and carbon dioxide to create glucose (food) and release oxygen as a byproduct. This is why plants are so important — they feed themselves AND produce the oxygen we breathe! 🌱☀️",The equation for photosynthesis is: 6CO2 + 6H2O + light energy → C6H12O6 + 6O2.,,0.8923129502641872,0.9999999999
+State Newton's second law of motion.,"[""Newton's three laws of motion: First law (inertia): An object at rest stays at rest and an object in motion stays in motion unless acted upon by an external force. Second law: Force equals mass times acceleration (F=ma). Third law: For every action there is an equal and opposite reaction. Applications: First law explains seatbelts, second law explains rocket propulsion, third law explains how guns recoil."", ""Ohm's law states that current through a conductor is directly proportional to voltage across it at constant temperature. Formula: V = IR where V is voltage (volts), I is current (amperes), R is resistance (ohms). Series circuit: same current through all components, resistances add up. Parallel circuit: same voltage across all components, reciprocal of total resistance equals sum of reciprocals. Power = V × I = I²R = V²/R."", 'Photosynthesis is the process by which green plants convert sunlight into food. Equation: 6CO2 + 6H2O + light energy → C6H12O6 + 6O2. Takes place in chloroplasts. Two stages: Light reactions (in thylakoid membrane, produce ATP and NADPH, split water, release oxygen) and Calvin cycle (in stroma, use ATP and NADPH to fix CO2 into glucose). Chlorophyll absorbs red and blue light, reflects green light.', 'The periodic table organises elements by atomic number. Periods are horizontal rows (1-7). Groups are vertical columns (1-18). Elements in same group have similar chemical properties and same number of valence electrons. Alkali metals (Group 1) are highly reactive. Noble gases (Group 18) are inert. Electronegativity increases across a period and decreases down a group. Atomic radius decreases across a period and increases down a group.', 'Pythagoras theorem states that in a right-angled triangle, the square of the hypotenuse equals the sum of squares of the other two sides. Formula: a² + b² = c² where c is the hypotenuse. Converse: if a² + b² = c² then the triangle is right-angled. Common Pythagorean triplets: 3,4,5 and 5,12,13 and 8,15,17. Applications include finding distances, navigation, and construction.']","# Newton's Second Law of Motion
+
+## 1. Concept Explanation
+
+Newton's Second Law of Motion describes the relationship between force, mass, and acceleration. It tells us **how much an object will accelerate when a force is applied to it**.
+
+The law states: **The acceleration of an object is directly proportional to the net force acting on it and inversely proportional to its mass.**
+
+In simpler terms: A stronger force produces greater acceleration, while a heavier object accelerates less for the same force.
+
+## 2. Key Points
+
+- **Formula:** **F = ma**
+  - F = Force (measured in Newtons)
+  - m = Mass (measured in kilograms)
+  - a = Acceleration (measured in m/s²)
+
+- The force must be the **net force** (total of all forces acting on the object)
+- If mass increases, acceleration decreases (for same force)
+- If force increases, acceleration increases (for same mass)
+
+## 3. Example (Relevant to Indian Students)
+
+**Scenario:** Pushing a cricket ball vs. pushing a football with the same effort
+
+- When you push a **light cricket ball** with force F, it accelerates quickly
+- When you push a **heavier football** with the same force F, it accelerates slowly
+- This is because the football has greater mass, so: a = F/m gives smaller acceleration
+
+**Real-life application:** Rocket propulsion - Rockets expel hot gases (creating force), which accelerates the rocket forward according to F = ma.
+
+## 4. Summary
+
+Newton's Second Law (F = ma) is the foundation of classical mechanics. It explains why heavier objects need more force to move and why greater forces produce faster acceleration. This law is essential for understanding motion in everyday life and advanced physics.","Newton's second law states that force equals mass times acceleration, expressed as F = ma.",,0.8024948047787874,0.9999999999
+What is Ohm's law?,"[""Ohm's law states that current through a conductor is directly proportional to voltage across it at constant temperature. Formula: V = IR where V is voltage (volts), I is current (amperes), R is resistance (ohms). Series circuit: same current through all components, resistances add up. Parallel circuit: same voltage across all components, reciprocal of total resistance equals sum of reciprocals. Power = V × I = I²R = V²/R."", ""Newton's three laws of motion: First law (inertia): An object at rest stays at rest and an object in motion stays in motion unless acted upon by an external force. Second law: Force equals mass times acceleration (F=ma). Third law: For every action there is an equal and opposite reaction. Applications: First law explains seatbelts, second law explains rocket propulsion, third law explains how guns recoil."", 'The periodic table organises elements by atomic number. Periods are horizontal rows (1-7). Groups are vertical columns (1-18). Elements in same group have similar chemical properties and same number of valence electrons. Alkali metals (Group 1) are highly reactive. Noble gases (Group 18) are inert. Electronegativity increases across a period and decreases down a group. Atomic radius decreases across a period and increases down a group.', 'RAM (Random Access Memory) is volatile memory that temporarily stores data being used by the CPU. Data is lost when power is off. RAM is fast and directly accessible by CPU. ROM (Read Only Memory) is non-volatile memory that permanently stores firmware and boot instructions. Data persists without power. ROM cannot be easily modified. Types of RAM: DRAM (Dynamic RAM), SRAM (Static RAM). Types of ROM: PROM, EPROM, EEPROM.', 'Photosynthesis is the process by which green plants convert sunlight into food. Equation: 6CO2 + 6H2O + light energy → C6H12O6 + 6O2. Takes place in chloroplasts. Two stages: Light reactions (in thylakoid membrane, produce ATP and NADPH, split water, release oxygen) and Calvin cycle (in stroma, use ATP and NADPH to fix CO2 into glucose). Chlorophyll absorbs red and blue light, reflects green light.']","# Understanding Ohm's Law
+
+## 1. Concept Explanation
+
+Ohm's law describes the relationship between three fundamental electrical quantities: **voltage**, **current**, and **resistance**. It states that:
+
+**The current flowing through a conductor is directly proportional to the voltage applied across it, provided the temperature remains constant.**
+
+In simpler terms: If you increase the voltage, the current increases. If you increase the resistance, the current decreases.
+
+## 2. Key Points / Formula
+
+**The mathematical formula is:**
+### V = IR
+
+Where:
+- **V** = Voltage (measured in **Volts**)
+- **I** = Current (measured in **Amperes** or Amps)
+- **R** = Resistance (measured in **Ohms** - Ω)
+
+You can rearrange this formula three ways:
+- V = IR (find voltage)
+- I = V/R (find current)
+- R = V/I (find resistance)
+
+## 3. Real-Life Example
+
+**Imagine a water pipe system:**
+- **Voltage** = Water pressure pushing the water
+- **Current** = Amount of water flowing through
+- **Resistance** = Obstacles blocking the pipe (like a valve)
+
+If you increase pressure (voltage), more water flows (current increases). If you close the valve (increase resistance), less water flows (current decreases).
+
+## 4. Summary
+
+Ohm's law is the foundation of electrical circuits. It helps us:
+- Calculate unknown values in circuits
+- Design safe electrical systems
+- Understand how appliances work in your home
+
+**Remember:** V = IR is your key formula! ⚡","Ohm's law states that voltage equals current times resistance, expressed as V = IR.",,0.7749269919150659,0.9999999999
