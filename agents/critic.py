@@ -8,6 +8,7 @@ load_dotenv()
 from agents.llm_factory import get_llm
 from langchain_core.prompts import ChatPromptTemplate
 from agents.state import TriSevaState
+from agents.utils import initialize_telemetry
 
 FAITHFULNESS_THRESHOLD = 0.7
 RELEVANCY_THRESHOLD = 0.7
@@ -100,18 +101,16 @@ def critic_node(state: TriSevaState) -> dict:
     query    = state.get("user_query", "")
 
     # Load or initialize telemetry
-    telemetry = state.get("telemetry") or {
-        "routing_hops": [],
-        "retries": 0,
-        "latency": 0.0,
-        "is_fallback_routing": False,
-        "fallback_routing_method": None,
-        "is_fallback_critic": False,
-        "is_fallback_retrieval": False,
-    }
+    telemetry = initialize_telemetry(state)
 
-    # If no chunks retrieved, skip evaluation
-    if not chunks or not draft:
+    eval_chunks = []
+    if state.get("image_text"):
+        eval_chunks.append(f"[Document Context]\n{state['image_text']}")
+    if chunks:
+        eval_chunks.extend(chunks)
+
+    # If no chunks retrieved/evaluable, skip evaluation
+    if not eval_chunks or not draft:
         print(f"  [Critic] No chunks or draft to evaluate — auto-approving")
         return {
             "faithfulness_score": 0.8,
@@ -120,7 +119,7 @@ def critic_node(state: TriSevaState) -> dict:
             "telemetry": telemetry,
         }
 
-    context = "\n\n".join(chunks)  # use all retrieved chunks
+    context = "\n\n".join(eval_chunks)  # use all retrieved chunks and document context
 
     try:
         global llm, critic_chain
@@ -130,7 +129,7 @@ def critic_node(state: TriSevaState) -> dict:
 
         response = critic_chain.invoke({
             "query":   query,
-            "context": context[:6000],
+            "context": context[:20000],
             "answer":  draft[:2000],
         })
 

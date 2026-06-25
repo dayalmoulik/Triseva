@@ -69,6 +69,14 @@ def add_chunks_to_collection(collection, chunks: List[Dict]):
     print(f"  ✅ Added {len(chunks)} chunks to '{collection.name}'")
 
 
+# ── Domain-specific chunk configurations ──────────────────────────────────────
+DOMAIN_CONFIGS = {
+    "health":      {"chunk_size": 1000, "overlap": 150},
+    "legal":       {"chunk_size": 600,  "overlap": 100},
+    "agriculture": {"chunk_size": 600,  "overlap": 100},
+}
+
+
 # ── Seed data — starter knowledge for each domain ────────────────────────────
 # This gets you running immediately without needing PDFs
 # You will add real PDFs on top of this
@@ -133,6 +141,12 @@ def build_knowledge_base():
 
         collection = get_or_create_collection(client, domain)
 
+        # Get config for chunking
+        config = DOMAIN_CONFIGS.get(domain, {"chunk_size": 1000, "overlap": 150})
+        chunk_sz = config["chunk_size"]
+        overlap = config["overlap"]
+        print(f"  🔧 Using chunking config: size={chunk_sz}, overlap={overlap}")
+
         # Add seed data
         chunks = []
         for i, item in enumerate(seed_data):
@@ -153,7 +167,7 @@ def build_knowledge_base():
             if pdf_files:
                 print(f"  Found {len(pdf_files)} PDF(s) in {raw_dir}")
                 for pdf_file in pdf_files:
-                    pdf_chunks = chunk_pdf(str(pdf_file), domain=domain)
+                    pdf_chunks = chunk_pdf(str(pdf_file), domain=domain, chunk_size=chunk_sz, overlap=overlap)
                     add_chunks_to_collection(collection, pdf_chunks)
             else:
                 print(f"  No PDFs found in {raw_dir}")
@@ -178,7 +192,7 @@ def build_knowledge_base():
                                     continue
                                 source = record.get("url") or record.get("source") or jsonl_file.name
                                 # Chunk this text
-                                record_chunks = chunk_raw_text(text, source=source, domain=domain)
+                                record_chunks = chunk_raw_text(text, source=source, domain=domain, chunk_size=chunk_sz, overlap=overlap)
                                 for rc in record_chunks:
                                     rc["chunk_id"] = f"{rc['chunk_id']}_rec{i}"
                                 jsonl_chunks.extend(record_chunks)
@@ -194,7 +208,7 @@ def build_knowledge_base():
                     print(f"  Processing clean txt: {txt_file.name}")
                     try:
                         text = txt_file.read_text(encoding="utf-8", errors="ignore")
-                        txt_chunks = chunk_raw_text(text, source=str(txt_file), domain=domain)
+                        txt_chunks = chunk_raw_text(text, source=str(txt_file), domain=domain, chunk_size=chunk_sz, overlap=overlap)
                         add_chunks_to_collection(collection, txt_chunks)
                     except Exception as e:
                         print(f"  Failed parsing text file {txt_file.name}: {e}")

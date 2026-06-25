@@ -13,6 +13,7 @@ from langgraph.prebuilt import create_react_agent
 
 from agents.llm_factory import get_llm
 from agents.state import TriSevaState
+from agents.utils import parse_agent_json, initialize_telemetry, get_document_context
 from tools.rag_tool import retrieve
 from tools.search_tool import web_search_tool
 
@@ -36,11 +37,18 @@ Guidelines:
 - CRITICAL: Do NOT introduce crop timelines, advisory details, or fertilizer recommendations that are not explicitly present in the retrieved context. Every statement you make must be directly backed by the retrieved context.
 - Only include sections (like action steps, scheme/advisory pointers) if the retrieved context explicitly contains that information. If not, omit those sections.
 
-Format your response as:
-1. Direct answer
-2. Action steps (ONLY if explicitly in context; otherwise omit)
-3. Scheme/advisory pointers (ONLY if explicitly in context; otherwise omit)
-4. Short caution note"""
+CRITICAL FORMATTING INSTRUCTION:
+You MUST respond ONLY with a JSON object containing exactly two fields:
+1. "factual_response": The direct agricultural factual answer directly grounded in the context (including context-supported action steps or advisory pointers if present, formatted cleanly with markdown bullet points if appropriate). Do not include any caution or safety warning here.
+2. "caution_note": A safety note/caution note (e.g., 'Always verify schemes on official government portals and follow local agriculture officer guidance.').
+
+Example output format:
+{
+  "factual_response": "Under the PM-KISAN scheme, eligible farmers receive a financial benefit of Rs. 6,000 per year in three equal installments of Rs. 2,000.",
+  "caution_note": "Always verify schemes on official government portals and follow local agriculture officer guidance."
+}
+
+Do not include any text outside the JSON object."""
 
 
 def agri_agent_node(state: TriSevaState) -> dict:
@@ -48,15 +56,7 @@ def agri_agent_node(state: TriSevaState) -> dict:
     print(f"  [Agri Agent] Processing: '{state['user_query'][:60]}'")
 
     # Load or initialize telemetry
-    telemetry = state.get("telemetry") or {
-        "routing_hops": [],
-        "retries": 0,
-        "latency": 0.0,
-        "is_fallback_routing": False,
-        "fallback_routing_method": None,
-        "is_fallback_critic": False,
-        "is_fallback_retrieval": False,
-    }
+    telemetry = initialize_telemetry(state)
 
     retrieved_chunks_list = []
     retrieved_sources_list = []
@@ -96,6 +96,45 @@ def agri_agent_node(state: TriSevaState) -> dict:
         if llm is None:
             llm = get_llm(temperature=0.3, max_tokens=1024)
 
+        doc_context = get_document_context(state)
+        if doc_context:
+            # Direct LLM call to prevent tool-binding and avoid 403/Forbidden issues on model endpoints
+            prompt = f"""You are TriSeva's Agriculture Assistant for India.
+Analyze the provided document context and answer the user's query.
+
+[Document Context]
+{doc_context}
+
+User Query: {state['user_query']}
+
+Guidelines:
+- Ground your answer strictly in the provided [Document Context].
+- If the answer cannot be found in the document, say so. Do not extrapolate.
+- Avoid unsafe chemical advice; recommend label and local agriculture officer guidance.
+
+CRITICAL FORMATTING INSTRUCTION:
+You MUST respond ONLY with a JSON object containing exactly two fields:
+1. "factual_response": The direct agricultural factual answer directly grounded in the document context. Do not include any caution or safety warning here.
+2. "caution_note": A safety note/caution note (e.g., 'Always verify schemes on official government portals and follow local agriculture officer guidance.').
+
+Do not include any text outside the JSON object."""
+            
+            response = llm.invoke(prompt)
+            raw_answer = response.content
+            print(f"  [Agri Agent Direct] Done ({len(raw_answer)} chars)")
+            
+            default_disclaimer = "🌾 Always verify schemes and advisories on official government portals (e.g., pmkisan.gov.in) and follow local agriculture officer guidance."
+            factual, caution = parse_agent_json(raw_answer, default_disclaimer)
+            
+            return {
+                "draft_answer":      factual,
+                "retrieved_chunks":  [f"[Document Context]\n{doc_context}"],
+                "sources":           [{"source": "Uploaded Document", "score": 1.0}],
+                "quiz":              state.get("quiz") or [],
+                "domain_disclaimer": caution,
+                "telemetry":         telemetry,
+            }
+
         # Create the ReAct agent runner
         agent = create_react_agent(
             model=llm,
@@ -124,20 +163,23 @@ Please revise your response. Review the previous context, and use tools to re-qu
         
         # Extract the final answer from the last message in history
         final_messages = result.get("messages", [])
-        answer = final_messages[-1].content if final_messages else ""
+        raw_answer = final_messages[-1].content if final_messages else ""
 
-        print(f"  [Agri Agent] ✅ Done ({len(answer)} chars)")
+        print(f"  [Agri Agent] ✅ Done ({len(raw_answer)} chars)")
+
+        default_disclaimer = "🌾 Always verify schemes and advisories on official government portals (e.g., pmkisan.gov.in) and follow local agriculture officer guidance."
+        factual, caution = parse_agent_json(raw_answer, default_disclaimer)
 
         # Ensure we have default lists if no tool calls were triggered
         chunks_to_return = retrieved_chunks_list if retrieved_chunks_list else ["No context."]
         sources_to_return = retrieved_sources_list if retrieved_sources_list else [{"source": "system", "score": 1.0}]
 
         return {
-            "draft_answer":      answer,
+            "draft_answer":      factual,
             "retrieved_chunks":  chunks_to_return,
             "sources":           sources_to_return,
             "quiz":              state.get("quiz") or [],
-            "domain_disclaimer": None,
+            "domain_disclaimer": caution,
             "telemetry":         telemetry,
         }
 
@@ -148,11 +190,12 @@ Please revise your response. Review the previous context, and use tools to re-qu
             return_msg = f"⚠️ Configuration Error: {error_msg}"
         else:
             return_msg = "I encountered an error processing your agriculture query. Please try again."
+        default_disclaimer = "🌾 Always verify schemes and advisories on official government portals (e.g., pmkisan.gov.in) and follow local agriculture officer guidance."
         return {
             "draft_answer":      return_msg,
             "retrieved_chunks":  [],
             "sources":           [],
             "quiz":              state.get("quiz") or [],
-            "domain_disclaimer": "🌾 Please consult a local agricultural officer for specific advice.",
+            "domain_disclaimer": default_disclaimer,
             "telemetry":         telemetry,
         }

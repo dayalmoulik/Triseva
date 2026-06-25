@@ -1,6 +1,7 @@
 import os
 import pymupdf as fitz
 from typing import List, Dict
+from langchain_text_splitters import RecursiveCharacterTextSplitter
 
 
 def extract_text_from_pdf(pdf_path: str) -> str:
@@ -17,43 +18,43 @@ def chunk_text(
     text: str,
     source: str,
     domain: str,
-    chunk_size: int = 250,
-    overlap: int = 30,
+    chunk_size: int = 1000,
+    chunk_overlap: int = 150,
 ) -> List[Dict]:
     """
-    Split text into overlapping chunks.
-    Returns list of dicts with text, source, domain, chunk_id.
+    Split text into overlapping chunks using RecursiveCharacterTextSplitter.
+    Preserves paragraph and sentence integrity.
     """
-    words = text.split()
+    splitter = RecursiveCharacterTextSplitter(
+        chunk_size=chunk_size,
+        chunk_overlap=chunk_overlap,
+        length_function=len,
+        separators=["\n\n", "\n", ". ", " ", ""]
+    )
+    
+    splits = splitter.split_text(text)
+    
     chunks = []
-    chunk_id = 0
-
-    i = 0
-    while i < len(words):
-        chunk_words = words[i : i + chunk_size]
-        chunk_text = " ".join(chunk_words).strip()
-
-        if len(chunk_text) > 100:  # skip tiny chunks
+    for chunk_id, split_text in enumerate(splits):
+        cleaned_text = split_text.strip()
+        if len(cleaned_text) > 100:  # Skip tiny structural artifacts
             chunks.append({
-                "text":     chunk_text,
+                "text":     cleaned_text,
                 "source":   source,
                 "domain":   domain,
-                "chunk_id": f"{domain}_{os.path.basename(source)}_{chunk_id}",
+                "chunk_id": f"{domain}_{os.path.basename(source)}_{chunk_id:04d}",
             })
-            chunk_id += 1
-
-        i += chunk_size - overlap  # overlap between chunks
-
+            
     return chunks
 
 
-def chunk_pdf(pdf_path: str, domain: str, chunk_size: int = 250, overlap: int = 30) -> List[Dict]:
+def chunk_pdf(pdf_path: str, domain: str, chunk_size: int = 1000, overlap: int = 150) -> List[Dict]:
     """Extract and chunk a PDF file."""
     print(f"  Chunking: {os.path.basename(pdf_path)}")
     text = extract_text_from_pdf(pdf_path)
-    return chunk_text(text, source=pdf_path, domain=domain, chunk_size=chunk_size, overlap=overlap)
+    return chunk_text(text, source=pdf_path, domain=domain, chunk_size=chunk_size, chunk_overlap=overlap)
 
 
-def chunk_raw_text(text: str, source: str, domain: str, chunk_size: int = 250, overlap: int = 30) -> List[Dict]:
+def chunk_raw_text(text: str, source: str, domain: str, chunk_size: int = 1000, overlap: int = 150) -> List[Dict]:
     """Chunk a raw text string directly."""
-    return chunk_text(text, source=source, domain=domain, chunk_size=chunk_size, overlap=overlap)
+    return chunk_text(text, source=source, domain=domain, chunk_size=chunk_size, chunk_overlap=overlap)

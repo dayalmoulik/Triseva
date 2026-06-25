@@ -13,6 +13,7 @@ from langgraph.prebuilt import create_react_agent
 
 from agents.llm_factory import get_llm
 from agents.state import TriSevaState
+from agents.utils import parse_agent_json, initialize_telemetry, get_document_context
 from tools.rag_tool import retrieve
 from tools.search_tool import web_search_tool
 
@@ -32,14 +33,21 @@ Guidelines:
 - Do NOT include general definitions, background explanations, or medical theory unless explicitly written in the retrieved context.
 - Never diagnose — provide information only.
 - Be empathetic and clear.
-- CRITICAL: Do NOT under any circumstances introduce any facts, medical advice, numbers, symptoms, or details that are not explicitly written in the retrieved context. Every single claim or precaution you mention must be directly supported by a source in the retrieved context. If the retrieved context does not contain enough information, state that the information is not available in the documents rather than extrapolating.
+- CRITICAL: Do NOT under any circumstances introduce any facts, medical advice, numbers, symptoms, or details that are not explicitly written in the retrieved context. Every single claim or precaution you mention must be directly supported by a source in the retrieved context.
 - Only include sections (like "Relevant medical context" or "What to watch out for") if the retrieved context explicitly contains that information. If not, omit those sections.
 
-Format your response as:
-1. Direct answer to the question
-2. Relevant medical context (ONLY if explicitly in context; otherwise omit)
-3. What to watch out for (ONLY if explicitly in context; otherwise omit)
-4. Always end with: "Please consult a qualified doctor for personal medical advice." """
+CRITICAL FORMATTING INSTRUCTION:
+You MUST respond ONLY with a JSON object containing exactly two fields:
+1. "factual_response": The direct medical factual answer directly grounded in the context (including context-supported symptoms or precautions if present, formatted cleanly with markdown bullet points if appropriate). Do not include any warning or consultant recommendation here.
+2. "caution_note": A safety note/disclaimer (e.g., 'Please consult a qualified doctor for personal medical advice.').
+
+Example output format:
+{
+  "factual_response": "Your hemoglobin level is 10.2 g/dL. According to the reference guide, this is considered low for adults, which may indicate mild anemia.",
+  "caution_note": "Please consult a qualified doctor for personal medical advice."
+}
+
+Do not include any text outside the JSON object."""
 
 
 def health_agent_node(state: TriSevaState) -> dict:
@@ -47,15 +55,7 @@ def health_agent_node(state: TriSevaState) -> dict:
     print(f"  [Health Agent] Processing: '{state['user_query'][:60]}'")
 
     # Load or initialize telemetry
-    telemetry = state.get("telemetry") or {
-        "routing_hops": [],
-        "retries": 0,
-        "latency": 0.0,
-        "is_fallback_routing": False,
-        "fallback_routing_method": None,
-        "is_fallback_critic": False,
-        "is_fallback_retrieval": False,
-    }
+    telemetry = initialize_telemetry(state)
 
     retrieved_chunks_list = []
     retrieved_sources_list = []
@@ -95,6 +95,44 @@ def health_agent_node(state: TriSevaState) -> dict:
         if llm is None:
             llm = get_llm(temperature=0.2, max_tokens=1024)
 
+        doc_context = get_document_context(state)
+        if doc_context:
+            # Direct LLM call to prevent tool-binding and avoid 403/Forbidden issues on model endpoints
+            prompt = f"""You are TriSeva's Healthcare Assistant — a knowledgeable, empathetic medical information assistant for Indian patients.
+Analyze the provided document context and answer the user's query.
+
+[Document Context]
+{doc_context}
+
+User Query: {state['user_query']}
+
+Guidelines:
+- Ground your answer strictly in the provided [Document Context].
+- If the answer cannot be found in the document, say so. Do not extrapolate.
+- Never diagnose — provide information only.
+
+CRITICAL FORMATTING INSTRUCTION:
+You MUST respond ONLY with a JSON object containing exactly two fields:
+1. "factual_response": The direct medical factual answer directly grounded in the document context. Do not include any warning or consultant recommendation here.
+2. "caution_note": A safety note/disclaimer (e.g., 'Please consult a qualified doctor for personal medical advice.').
+
+Do not include any text outside the JSON object."""
+            
+            response = llm.invoke(prompt)
+            raw_answer = response.content
+            print(f"  [Health Agent Direct] Done ({len(raw_answer)} chars)")
+            
+            default_disclaimer = "⚕️ This is informational only. Please consult a qualified doctor for personal medical advice."
+            factual, caution = parse_agent_json(raw_answer, default_disclaimer)
+            
+            return {
+                "draft_answer":      factual,
+                "retrieved_chunks":  [f"[Document Context]\n{doc_context}"],
+                "sources":           [{"source": "Uploaded Document", "score": 1.0}],
+                "domain_disclaimer": caution,
+                "telemetry":         telemetry,
+            }
+
         # Create the ReAct agent runner
         agent = create_react_agent(
             model=llm,
@@ -123,19 +161,22 @@ Please revise your response. Review the previous context, and use tools to re-qu
         
         # Extract the final answer from the last message in history
         final_messages = result.get("messages", [])
-        answer = final_messages[-1].content if final_messages else ""
+        raw_answer = final_messages[-1].content if final_messages else ""
 
-        print(f"  [Health Agent] ✅ Done ({len(answer)} chars)")
+        print(f"  [Health Agent] ✅ Done ({len(raw_answer)} chars)")
+
+        default_disclaimer = "⚕️ This is informational only. Please consult a qualified doctor for personal medical advice."
+        factual, caution = parse_agent_json(raw_answer, default_disclaimer)
 
         # Ensure we have default lists if no tool calls were triggered
         chunks_to_return = retrieved_chunks_list if retrieved_chunks_list else ["No context."]
         sources_to_return = retrieved_sources_list if retrieved_sources_list else [{"source": "system", "score": 1.0}]
 
         return {
-            "draft_answer":      answer,
+            "draft_answer":      factual,
             "retrieved_chunks":  chunks_to_return,
             "sources":           sources_to_return,
-            "domain_disclaimer": "⚕️ This is informational only. Please consult a qualified doctor for personal medical advice.",
+            "domain_disclaimer": caution,
             "telemetry":         telemetry,
         }
 
@@ -146,10 +187,11 @@ Please revise your response. Review the previous context, and use tools to re-qu
             return_msg = f"⚠️ Configuration Error: {error_msg}"
         else:
             return_msg = "I encountered an error processing your health query. Please try again."
+        default_disclaimer = "⚕️ Please consult a qualified doctor for personal medical advice."
         return {
             "draft_answer":      return_msg,
             "retrieved_chunks":  [],
             "sources":           [],
-            "domain_disclaimer": "⚕️ Please consult a qualified doctor for personal medical advice.",
+            "domain_disclaimer": default_disclaimer,
             "telemetry":         telemetry,
         }

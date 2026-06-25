@@ -24,6 +24,7 @@ from agents.health_agent import health_agent_node
 from agents.legal_agent import legal_agent_node
 from agents.agri_agent import agri_agent_node
 from agents.critic import critic_node, should_retry
+from agents.multimodal import image_processing_node
 
 import signal
 import threading
@@ -34,6 +35,7 @@ def build_graph():
 
     # ── Register nodes ────────────────────────────────────────────
     graph.add_node("memory_read",  memory_read_node)
+    graph.add_node("image_processing", image_processing_node)
     graph.add_node("orchestrator", orchestrator_node)
     graph.add_node("health_agent", health_agent_node)
     graph.add_node("legal_agent",  legal_agent_node)
@@ -45,7 +47,8 @@ def build_graph():
     graph.set_entry_point("memory_read")
 
     # ── Fixed edges ───────────────────────────────────────────────
-    graph.add_edge("memory_read",  "orchestrator")
+    graph.add_edge("memory_read",  "image_processing")
+    graph.add_edge("image_processing", "orchestrator")
     graph.add_edge("health_agent", "critic")
     graph.add_edge("legal_agent",  "critic")
     graph.add_edge("agri_agent",   "critic")
@@ -126,7 +129,7 @@ def ask(query: str, session_id: str = "default", image_path: str = None, domain_
 
     thread = threading.Thread(target=run)
     thread.start()
-    thread.join(timeout=120)  # 120 second timeout
+    thread.join(timeout=300)  # 300 second timeout
 
     if thread.is_alive():
         return {

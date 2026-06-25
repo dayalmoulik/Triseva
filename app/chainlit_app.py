@@ -150,8 +150,19 @@ async def on_message(message: cl.Message):
     session_id = cl.user_session.get("session_id")
     query      = message.content.strip()
 
+    # Extract uploaded file path
+    image_path = None
+    if message.elements:
+        for element in message.elements:
+            if element.path and os.path.exists(element.path):
+                image_path = element.path
+                break
+
     if not query:
-        return
+        if image_path:
+            query = "Describe this document."
+        else:
+            return
 
     # Thinking indicator
     async with cl.Step(name="TriSeva", type="llm") as step:
@@ -161,6 +172,7 @@ async def on_message(message: cl.Message):
         result = await cl.make_async(ask)(
             query=query,
             session_id=session_id,
+            image_path=image_path,
         )
 
         answer     = result.get("answer") or "No answer generated."

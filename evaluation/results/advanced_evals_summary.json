@@ -1,0 +1,83 @@
+{
+  "progress_file_evaluated": "evaluation/results/eval_500_progress_claude.jsonl",
+  "domain_routing": {
+    "classification_report": {
+      "health": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1-score": 1.0,
+        "support": 166.0
+      },
+      "legal": {
+        "precision": 0.9940119760479041,
+        "recall": 1.0,
+        "f1-score": 0.996996996996997,
+        "support": 166.0
+      },
+      "agriculture": {
+        "precision": 1.0,
+        "recall": 0.9940476190476191,
+        "f1-score": 0.9970149253731343,
+        "support": 168.0
+      },
+      "accuracy": 0.998,
+      "macro avg": {
+        "precision": 0.9980039920159681,
+        "recall": 0.998015873015873,
+        "f1-score": 0.9980039741233772,
+        "support": 500.0
+      },
+      "weighted avg": {
+        "precision": 0.9980119760479043,
+        "recall": 0.998,
+        "f1-score": 0.9980000179283761,
+        "support": 500.0
+      }
+    },
+    "confusion_matrix": [
+      [
+        166,
+        0,
+        0
+      ],
+      [
+        0,
+        166,
+        0
+      ],
+      [
+        0,
+        1,
+        167
+      ]
+    ]
+  },
+  "ragas_context_metrics": {
+    "context_precision": 0.509,
+    "context_recall": 0.49
+  },
+  "language_stratified": {
+    "en": {
+      "faithfulness": 0.692,
+      "answer_relevancy": 0.446
+    },
+    "hi": {
+      "faithfulness": 0.478,
+      "answer_relevancy": 0.013
+    },
+    "hinglish": {
+      "faithfulness": 0.663,
+      "answer_relevancy": 0.169
+    }
+  },
+  "critic_retry_analysis": {
+    "retry_rate_pct": 44.4,
+    "avg_retries": 0.62,
+    "faithfulness_delta": 0.068
+  },
+  "bertscore": {
+    "bertscore_precision": 0.819,
+    "bertscore_recall": 0.886,
+    "bertscore_f1": 0.851
+  }
+}

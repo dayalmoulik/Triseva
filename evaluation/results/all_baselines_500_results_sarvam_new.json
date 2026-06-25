@@ -1,0 +1,20 @@
+{
+  "scores": {
+    "triseva": {
+      "faithfulness": 0.618,
+      "answer_relevancy": 0.677
+    },
+    "b1_naive": {
+      "faithfulness": 0.735,
+      "answer_relevancy": 0.597
+    },
+    "b2_nocritic": {
+      "faithfulness": 0.599,
+      "answer_relevancy": 0.684
+    },
+    "b3_keyword": {
+      "faithfulness": 0.658,
+      "answer_relevancy": 0.512
+    }
+  }
+}

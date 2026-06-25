@@ -13,6 +13,7 @@ from langgraph.prebuilt import create_react_agent
 
 from agents.llm_factory import get_llm
 from agents.state import TriSevaState
+from agents.utils import parse_agent_json, initialize_telemetry, get_document_context
 from tools.rag_tool import retrieve
 from tools.search_tool import web_search_tool
 from tools.calculator_tool import calculator_tool
@@ -37,12 +38,18 @@ Guidelines:
 - CRITICAL: Do NOT assume, extrapolate, or introduce outside details about scheme eligibility, application steps, or required criteria. Every statement you make must be directly backed by the retrieved context.
 - Only include sections (like eligibility criteria, required documents, how to apply) if the retrieved context explicitly contains that information. If not, omit those sections.
 
-Format your response as:
-1. Direct answer — eligible or not (ONLY if explicitly in context; otherwise omit)
-2. Key eligibility criteria (ONLY if explicitly in context; otherwise omit)
-3. Required documents (ONLY if explicitly in context; otherwise omit)
-4. How to apply (ONLY if explicitly in context; otherwise omit)
-5. Source: [scheme name]"""
+CRITICAL FORMATTING INSTRUCTION:
+You MUST respond ONLY with a JSON object containing exactly two fields:
+1. "factual_response": The direct legal/schemes factual answer directly grounded in the context (including context-supported eligibility criteria, required documents, or how to apply if present, formatted cleanly with markdown bullet points if appropriate) followed by the Source citation. Do not include any caution or safety warning here.
+2. "caution_note": A safety note/disclaimer (e.g., 'This information is for guidance only. Consult a legal professional for specific advice.').
+
+Example output format:
+{
+  "factual_response": "To be eligible for the scheme, the applicant must be a resident of India and have an annual income below Rs. 2 Lakhs. Source: National Welfare Scheme Guidelines.",
+  "caution_note": "This information is for guidance only. Consult a legal professional for specific advice."
+}
+
+Do not include any text outside the JSON object."""
 
 
 def legal_agent_node(state: TriSevaState) -> dict:
@@ -50,15 +57,7 @@ def legal_agent_node(state: TriSevaState) -> dict:
     print(f"  [Legal Agent] Processing: '{state['user_query'][:60]}'")
 
     # Load or initialize telemetry
-    telemetry = state.get("telemetry") or {
-        "routing_hops": [],
-        "retries": 0,
-        "latency": 0.0,
-        "is_fallback_routing": False,
-        "fallback_routing_method": None,
-        "is_fallback_critic": False,
-        "is_fallback_retrieval": False,
-    }
+    telemetry = initialize_telemetry(state)
 
     retrieved_chunks_list = []
     retrieved_sources_list = []
@@ -98,6 +97,44 @@ def legal_agent_node(state: TriSevaState) -> dict:
         if llm is None:
             llm = get_llm(temperature=0.1, max_tokens=1024)
 
+        doc_context = get_document_context(state)
+        if doc_context:
+            # Direct LLM call to prevent tool-binding and avoid 403/Forbidden issues on model endpoints
+            prompt = f"""You are TriSeva's Legal and Government Schemes Assistant — an expert on Indian government welfare schemes, citizen rights, and legal aid.
+Analyze the provided document context and answer the user's query.
+
+[Document Context]
+{doc_context}
+
+User Query: {state['user_query']}
+
+Guidelines:
+- Ground your answer strictly in the provided [Document Context].
+- If the answer cannot be found in the document, say so. Do not extrapolate.
+- Be precise about eligibility — wrong information can harm citizens.
+
+CRITICAL FORMATTING INSTRUCTION:
+You MUST respond ONLY with a JSON object containing exactly two fields:
+1. "factual_response": The direct legal/schemes factual answer directly grounded in the document context. Do not include any caution or safety warning here.
+2. "caution_note": A safety note/disclaimer (e.g., 'This information is for guidance only. Consult a legal professional for specific advice.').
+
+Do not include any text outside the JSON object."""
+            
+            response = llm.invoke(prompt)
+            raw_answer = response.content
+            print(f"  [Legal Agent Direct] Done ({len(raw_answer)} chars)")
+            
+            default_disclaimer = "⚖️ This information is for guidance only. Consult a legal professional for specific advice."
+            factual, caution = parse_agent_json(raw_answer, default_disclaimer)
+            
+            return {
+                "draft_answer":      factual,
+                "retrieved_chunks":  [f"[Document Context]\n{doc_context}"],
+                "sources":           [{"source": "Uploaded Document", "score": 1.0}],
+                "domain_disclaimer": caution,
+                "telemetry":         telemetry,
+            }
+
         # Create the ReAct agent runner
         agent = create_react_agent(
             model=llm,
@@ -132,19 +169,24 @@ Please revise your response. Review the previous context, and use tools to re-qu
 
         # Extract the final answer from the last message in history
         final_messages = result.get("messages", [])
-        answer = final_messages[-1].content if final_messages else ""
+        raw_answer = final_messages[-1].content if final_messages else ""
+        print(f"  [Legal Agent] Raw LLM Answer (len {len(raw_answer)}): {raw_answer[:300]}")
+        sys.stdout.flush()
 
-        print(f"  [Legal Agent] ✅ Done ({len(answer)} chars)")
+        print(f"  [Legal Agent] ✅ Done ({len(raw_answer)} chars)")
+
+        default_disclaimer = "⚖️ This information is for guidance only. Consult a legal professional for specific advice."
+        factual, caution = parse_agent_json(raw_answer, default_disclaimer)
 
         # Ensure we have default lists if no tool calls were triggered
         chunks_to_return = retrieved_chunks_list if retrieved_chunks_list else ["No context."]
         sources_to_return = retrieved_sources_list if retrieved_sources_list else [{"source": "system", "score": 1.0}]
 
         return {
-            "draft_answer":      answer,
+            "draft_answer":      factual,
             "retrieved_chunks":  chunks_to_return,
             "sources":           sources_to_return,
-            "domain_disclaimer": "⚖️ This information is for guidance only. Consult a legal professional for specific advice.",
+            "domain_disclaimer": caution,
             "telemetry":         telemetry,
         }
 
@@ -155,10 +197,11 @@ Please revise your response. Review the previous context, and use tools to re-qu
             return_msg = f"⚠️ Configuration Error: {error_msg}"
         else:
             return_msg = "I encountered an error processing your legal query. Please try again."
+        default_disclaimer = "⚖️ Consult a legal professional for specific advice."
         return {
             "draft_answer":      return_msg,
             "retrieved_chunks":  [],
             "sources":           [],
-            "domain_disclaimer": "⚖️ Consult a legal professional for specific advice.",
+            "domain_disclaimer": default_disclaimer,
             "telemetry":         telemetry,
         }
