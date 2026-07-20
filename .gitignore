@@ -43,4 +43,6 @@ Thumbs.db
 .deepeval/
 evaluation/results/
 scratch/
+data/raw/
+data/test_samples/
 
