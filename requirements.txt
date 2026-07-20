@@ -22,6 +22,7 @@ google-generativeai==0.8.6
 # Vector Database & Embeddings
 chromadb==1.5.9
 sentence-transformers==5.4.1
+rank-bm25
 
 # Deep Learning (Domain Classifier)
 torch==2.11.0
