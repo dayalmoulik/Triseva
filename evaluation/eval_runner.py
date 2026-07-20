@@ -10,9 +10,15 @@ import pandas as pd
 from pathlib import Path
 from concurrent.futures import ProcessPoolExecutor, as_completed
 
-# Turn off LangChain tracing to prevent rate limits and console pollution
-os.environ["LANGCHAIN_TRACING_V2"] = "false"
-os.environ["LANGCHAIN_PROJECT"] = ""
+# Default to turning off LangChain tracing at import time (can be overridden dynamically)
+if "LANGCHAIN_TRACING_V2" not in os.environ:
+    os.environ["LANGCHAIN_TRACING_V2"] = "false"
+if "LANGCHAIN_PROJECT" not in os.environ:
+    os.environ["LANGCHAIN_PROJECT"] = ""
+
+# Force HuggingFace to run in offline mode using local cache
+os.environ["TRANSFORMERS_OFFLINE"] = "1"
+os.environ["HF_HUB_OFFLINE"] = "1"
 
 WORKSPACE_PATH = "c:/Users/Moulik/Agentic AI/Triseva"
 sys.path.insert(0, WORKSPACE_PATH)
@@ -80,7 +86,13 @@ def run_with_backoff(func, *args, max_retries=5, initial_delay=2.0, **kwargs):
                 raise e
     return func(*args, **kwargs)
 
-def process_single_question(record, idx, size):
+def process_single_question(record, idx, size, enable_trace=False):
+    if enable_trace:
+        os.environ["LANGCHAIN_TRACING_V2"] = "true"
+        os.environ["LANGCHAIN_PROJECT"] = "triseva"
+    else:
+        os.environ["LANGCHAIN_TRACING_V2"] = "false"
+
     q = record["question"]
     domain = record["domain"]
     
@@ -93,6 +105,9 @@ def process_single_question(record, idx, size):
         
         res = run_with_backoff(ask, query=q, session_id=f"eval-{size}-ts-{idx}")
         record["triseva_answer"] = res.get("answer", "")
+        record["triseva_run_id"] = res.get("run_id")
+        record["triseva_english_query"] = res.get("english_query", q)
+        record["triseva_draft_answer"] = res.get("draft_answer", "")
         
         chunks = retrieve(q, domain=domain, n_results=3)
         record["triseva_contexts"] = [c["text"] for c in chunks] if chunks else ["No context."]
@@ -101,9 +116,12 @@ def process_single_question(record, idx, size):
     except Exception as e:
         print(f"     ❌ TriSeva Error Q{idx}: {e}")
         record["triseva_answer"] = f"Error: {e}"
+        record["triseva_english_query"] = q
+        record["triseva_draft_answer"] = ""
         record["triseva_contexts"] = ["No context."]
         record["triseva_latency"] = 0.0
         record["triseva_retries"] = 0
+        record["triseva_run_id"] = None
 
     # 2. B1 — Naive RAG (Cross-Domain)
     try:
@@ -126,13 +144,19 @@ def process_single_question(record, idx, size):
         
         res = run_with_backoff(ask, query=q, session_id=f"eval-{size}-b2-{idx}")
         record["b2_answer"] = res.get("answer", "")
+        record["b2_run_id"] = res.get("run_id")
+        record["b2_english_query"] = res.get("english_query", q)
+        record["b2_draft_answer"] = res.get("draft_answer", "")
         
         chunks = retrieve(q, domain=domain, n_results=3)
         record["b2_contexts"] = [c["text"] for c in chunks] if chunks else ["No context."]
     except Exception as e:
         print(f"     ❌ B2 Error Q{idx}: {e}")
         record["b2_answer"] = f"Error: {e}"
+        record["b2_english_query"] = q
+        record["b2_draft_answer"] = ""
         record["b2_contexts"] = ["No context."]
+        record["b2_run_id"] = None
 
     # 4. B3 — Keyword Search (BM25)
     try:
@@ -152,9 +176,18 @@ def process_single_question(record, idx, size):
 def main():
     parser = argparse.ArgumentParser(description="TriSeva Baseline Response Collector")
     parser.add_argument("--size", type=int, default=50, help="Number of questions to sample and process")
+    parser.add_argument("--trace", action="store_true", help="Enable LangSmith tracing during collection")
     args = parser.parse_args()
     
     size = args.size
+    enable_trace = args.trace
+    
+    if enable_trace:
+        os.environ["LANGCHAIN_TRACING_V2"] = "true"
+        os.environ["LANGCHAIN_PROJECT"] = "triseva"
+    else:
+        os.environ["LANGCHAIN_TRACING_V2"] = "false"
+        
     progress_file = f"evaluation/results/answered_questions_{size}.jsonl"
     os.makedirs(os.path.dirname(progress_file), exist_ok=True)
     
@@ -179,13 +212,13 @@ def main():
         return
 
     # 3. Process in parallel
-    num_workers = 3
+    num_workers = 1
     print(f"\nProcessing {len(to_process)} questions using {num_workers} parallel workers...")
     
     with open(progress_file, "a", encoding="utf-8") as out_f:
         with ProcessPoolExecutor(max_workers=num_workers) as executor:
             future_to_record = {
-                executor.submit(process_single_question, dict(record), idx, size): (record, idx)
+                executor.submit(process_single_question, dict(record), idx, size, enable_trace): (record, idx)
                 for idx, record in enumerate(to_process, len(processed_questions) + 1)
             }
             

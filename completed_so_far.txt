@@ -1,5 +1,5 @@
 ================================================================================
-TRISEVA PROJECT - SUMMARY OF COMPLETED TASKS (AS OF JUNE 23, 2026)
+TRISEVA PROJECT - SUMMARY OF COMPLETED TASKS (AS OF JULY 14, 2026)
 ================================================================================
 
 This document outlines the detailed features, modules, and benchmarks that have
@@ -10,18 +10,22 @@ been successfully designed, implemented, and verified in the TriSeva codebase.
 --------------------------------------------------------------------------------
 * Designed and compiled a directed cyclic multi-agent graph using LangGraph's 
   StateGraph framework.
-* Registered seven specialized nodes:
+* Weaved translation pre- and post-processing nodes directly into the state execution graph:
+  - Entry edge: memory_read -> image_processing -> translation_pre -> orchestrator.
+  - Critic edge: From critic back to orchestrator (on retry/refinement) or to translation_post (on approval).
+  - Exit edge: translation_post -> memory_write -> END.
+* Registered nine specialized nodes:
   - memory_read / memory_write (for state loading and persistence)
+  - image_processing (for parsing uploaded document contexts)
+  - translation_pre (bilingual input translation to English)
   - orchestrator (domain router)
-  - health_agent (healthcare specialist)
-  - legal_agent (legal & government scheme specialist)
-  - agri_agent (agriculture specialist)
+  - health_agent (healthcare specialist running ReAct loop)
+  - legal_agent (legal & government scheme specialist running ReAct loop)
+  - agri_agent (agriculture specialist running ReAct loop)
   - critic (faithfulness/relevancy validation check)
+  - translation_post (translates final answer/quiz back to user's Hinglish style)
 * Integrated MemorySaver checkpointer to manage conversational state and thread-ID 
   tracking across user sessions.
-* Configured conditional edge routing:
-  - From orchestrator to the respective specialist agent based on query intent.
-  - From critic back to orchestrator (retry/refinement loop) or to memory_write (exit).
 
 --------------------------------------------------------------------------------
 2. MULTI-STAGE DOMAIN ROUTING (agents/orchestrator.py)
@@ -48,25 +52,27 @@ been successfully designed, implemented, and verified in the TriSeva codebase.
 * Recursive Character Splitting Splitter: Upgraded parsing pipeline from legacy word-window
   chunking to `RecursiveCharacterTextSplitter` splitting on boundaries `["\n\n", "\n", ". ", " ", ""]`
   with a chunk size of 1000 characters and 150 overlap.
-* Corpus Growth (1.8x Database Expansion to 16,827 Chunks):
-  - Health Domain (10,734 Chunks): 1,000 live drug monograph pages crawled from MedlinePlus, health topics, and National Health Policy.
-  - Legal Domain (3,782 Chunks): Assent copies of BNSS 2023, BSA 2023, BNS 2023, DPDP 2023, RTI, and NFSA 2013 parsed directly.
-  - Agriculture Domain (2,303 Chunks): Sourced and indexed 10 verified agriculture operational guidelines PDFs (PM-RKVY, PDMC, NFSM, MIDH, ATMA, FPO Guidelines, FPO Policy, AIF, Soil Health Card, PM-AASHA) and renamed text crop advisories to `.clean.txt`.
+* Corpus Growth (~5x Database Expansion to 46,553 Total Chunks):
+  - Health Domain (14,625 Chunks): 1,000 live drug monograph pages crawled from MedlinePlus, health topics, and National Health Policy.
+  - Legal Domain (15,581 Chunks): Assent copies of BNSS 2023, BSA 2023, BNS 2023, DPDP 2023, RTI, and NFSA 2013 parsed directly.
+  - Agriculture Domain (16,339 Chunks): Sourced and indexed 10 verified agriculture operational guidelines PDFs (PM-RKVY, PDMC, NFSM, MIDH, ATMA, FPO Guidelines, FPO Policy, AIF, Soil Health Card, PM-AASHA) and renamed text crop advisories to `.clean.txt`.
 
 --------------------------------------------------------------------------------
-4. SPECIALIST AGENT IMPLEMENTATIONS (agents/)
+4. SPECIALIST AGENT IMPLEMENTATIONS & REACT LOOPS (agents/)
 --------------------------------------------------------------------------------
 * Multi-Provider LLM Factory (`llm_factory.py`):
   - Refactored LLM backend to dynamically switch between Sarvam, OpenAI, Groq, 
     and Anthropic based on `LLM_PROVIDER` settings.
   - Handles mixed-case secrets and includes API key missing fallbacks.
+* Dynamic ReAct Agent Loops:
+  - Transitioned the specialist agents from static linear chains to dynamic reasoning loops using LangGraph's prebuilt `create_react_agent` runner.
+  - Healthcare Agent (health_agent.py): Binds local tools `healthcare_knowledge_base_retrieval` and `healthcare_web_search`.
+  - Legal Agent (legal_agent.py): Binds local tools `legal_knowledge_base_retrieval`, `legal_web_search`, and `calculator_tool` (regex-based welfare schemes calculations).
+  - Agriculture Agent (agri_agent.py): Binds local tools `agriculture_knowledge_base_retrieval` and `agriculture_web_search`.
 * Specialist Agent Prompts (JSON Separation Method):
   - Prompts output responses strictly as JSON objects containing `"factual_response"` 
     and `"caution_note"`. This separates safety disclaimers from the factual body 
     evaluated by Ragas, avoiding evaluation penalties.
-* Healthcare Agent (health_agent.py): Delivering empathetic medical info and disclaimers.
-* Legal Agent (legal_agent.py): Welfare schemes calculations via local regex calculators.
-* Agriculture Agent (agri_agent.py): Crop advisories with LLM-based quiz generation.
 
 --------------------------------------------------------------------------------
 5. REFLECTIVE CRITIC LOOP (agents/critic.py)
@@ -76,11 +82,23 @@ been successfully designed, implemented, and verified in the TriSeva codebase.
 * Enhanced Context Length: Increased the critic context length to 6,000 characters 
   and evaluated all retrieved chunks to prevent false-positive correction loops.
 * Configured thresholds (0.7) for Faithfulness (groundedness) and Answer Relevancy.
-* If thresholds are missed, the loop triggers a retry (up to 2 times), sending
-  detailed feedback to the orchestrator for answer revision.
+* If thresholds are missed, the loop triggers a retry (up to 2 times). Previous draft
+  answers and Critic feedback reasons are appended to the conversation history thread,
+  prompting the ReAct agents to dynamically revise, query databases, or search the web.
 
 --------------------------------------------------------------------------------
-6. DEPLOYMENT & CONVERSATIONAL INTERFACES (app/)
+6. BILINGUAL TRANSLATION & TRANSLITERATION SYSTEM (utils/ & agents/)
+--------------------------------------------------------------------------------
+* Created a unified translation subsystem to handle multilingual user inputs (Hinglish/Hindi):
+  - translation_pre Node: Detects Devanagari or Latin Hindi/Hinglish queries using keyword lists and unicode character ranges. Translates the inputs to standard English before routing and vector database querying, solving semantic mismatches.
+  - translation_post Node: Translates final answers and generated quizzes back to Devanagari or Latin Hinglish, matching the user's query style.
+* Hinglish-Tailored Transliteration Prompts:
+  - Formulates dynamic LLM prompts to maintain natural Hinglish code-mixed phrasing.
+  - Technical terms (e.g. 'Soil Health Card', 'hemoglobin') are kept in English (Latin script) or transliterated phonetically (e.g. 'सॉइल हेल्थ कार्ड', 'हीमोग्लोबिन' in Devanagari script) to avoid dry Sanskritized translations.
+* Local Translation Caching: Implemented a persistent cache (`data/translation_cache.json`) to store query-translation mappings, dramatically reducing translation latency and token costs on repeated inputs.
+
+--------------------------------------------------------------------------------
+7. DEPLOYMENT & CONVERSATIONAL INTERFACES (app/)
 --------------------------------------------------------------------------------
 * Hugging Face Spaces Docker Deployment:
   - Configured `Dockerfile` for secure cross-origin embedding, resolving iframe 
@@ -90,20 +108,25 @@ been successfully designed, implemented, and verified in the TriSeva codebase.
 * Streamlit Application (streamlit_app.py) & Gradio Debug Playground (gradio_app.py).
 
 --------------------------------------------------------------------------------
-7. BENCHMARKS & MULTI-FRAMEWORK EVALUATIONS (evaluation/)
+8. BENCHMARKS & DECOUPLED LANGSMITH EVALUATIONS (evaluation/)
 --------------------------------------------------------------------------------
 * Dataset: Multilingual TriSeva-QA dataset containing ~1,393 annotated QA pairs.
-* Process-Parallelized Benchmarking: Implemented process-parallel runs to prevent 
-  thread race conditions on global critic control variables, cutting latency by 70%.
-* Ragas Evaluations (Stable OpenAI Judge):
-  - Evaluated on a 50 QA dataset subset.
-  - Upgrading to the scaled and recursive database boosted TriSeva faithfulness 
-    from 0.618 to 0.677 (+9.5% improvement) and answer relevancy from 0.677 to 0.735.
-* DeepEval Integration:
-  - Integrated `deepeval` as an alternative LLM-as-a-judge framework using `uv`.
-  - Evaluated 50 QA dataset and saved results separately. TriSeva achieved 0.873 
-    faithfulness and 0.878 relevancy, confirming the trend that the agent critic 
-    loop outperforms naive RAG.
-  - Setup standard PyTest runner templates (`test_cli_dashboard.py`) to render 
-    rich, color-coded terminal dashboards locally.
+* Decoupled LangSmith Evaluation Workflow:
+  - Configured `RunIDCallbackHandler` in `main.py` to capture top-level execution run IDs during benchmarking.
+  - Enabled `--trace` command-line argument in `eval_runner.py` to dynamically toggle tracing and save run IDs to results JSONL files.
+  - Separated the execution run (logged to LangSmith) from Ragas and DeepEval runs. Evaluations run entirely offline with tracing disabled to prevent "trace explosion" and stay within Free tier limits.
+  - Created `push_feedback.py` to read offline metrics CSVs and upload scores (faithfulness, relevancy, etc.) as feedback back to their corresponding LangSmith trace runs.
+* 500-Question benchmark run:
+  - Executed successfully on 500 questions using `num_workers = 1` for absolute pipeline stability.
+  - TriSeva Full achieved 0.576 Ragas Faithfulness (outperforming B2 No-Critic's 0.536), proving the effectiveness of the Critic self-correction loop.
+  - Successfully pushed 3,992 feedback scores to LangSmith traces.
+
+--------------------------------------------------------------------------------
+9. GIT REPOSITORY MIGRATION & REPOSITORY CLEANUP
+--------------------------------------------------------------------------------
+* MIT License Integration: Created and integrated standard `LICENSE` (MIT) file at project root.
+* Surgical Database Cleanup: Removed 46 orphaned legacy database directories from `data/chromadb/`, preserving only active database files (`chroma.sqlite3` and 4 active vector segment subdirectories).
+* Code & Diagnostic Cleanup: Deleted redundant logs, evaluation runs, and scratch scripts to keep repository size lean.
+* SSH Firewall Bypass & Remote configuration: Configured local OpenSSH setup (`~/.ssh/config`) to route SSH connections via port 443 (`ssh.github.com`), successfully bypassing local firewall blocks on SSH port 22.
+* Git Remote & Tracking Setup: Set remote `origin` pointing to the private GitHub repository (`git@github.com:dayalmoulik/Triseva.git`) and updated local tracking configuration.
 ================================================================================

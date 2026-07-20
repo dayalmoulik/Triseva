@@ -35,7 +35,8 @@ Guidelines:
 - Do NOT include general definitions, background explanations, or administrative details unless explicitly written in the retrieved context.
 - Always cite the scheme name.
 - Use calculator results if income thresholds are involved.
-- CRITICAL: Do NOT assume, extrapolate, or introduce outside details about scheme eligibility, application steps, or required criteria. Every statement you make must be directly backed by the retrieved context.
+- CRITICAL PARAMETRIC GUARDRAIL: You are strictly forbidden from answering using your own pre-trained external knowledge. If the local database context does not contain the specific facts needed to answer the user's query, you MUST use the `legal_web_search` tool to search the web for the necessary facts. Only if BOTH the local database and the web search fail to find the answer should you return a JSON object where "factual_response" is exactly "I cannot find the answer to this in the available database." and "caution_note" contains your standard disclaimer. Do not extrapolate, guess, or synthesize any answer.
+- CRITICAL: Do NOT assume, extrapolate, or introduce outside details about scheme eligibility, application steps, or required criteria. Every statement you make must be directly backed by the retrieved context (from either database or web search).
 - Only include sections (like eligibility criteria, required documents, how to apply) if the retrieved context explicitly contains that information. If not, omit those sections.
 
 CRITICAL FORMATTING INSTRUCTION:
@@ -62,6 +63,64 @@ def legal_agent_node(state: TriSevaState) -> dict:
     retrieved_chunks_list = []
     retrieved_sources_list = []
 
+    def check_structured_schemes(q_text: str) -> str:
+        """Check query for scheme keywords and return their structured metadata context if matched."""
+        try:
+            import json
+            import os
+            schema_path = "data/legal_schemes.json"
+            if not os.path.exists(schema_path):
+                return ""
+                
+            with open(schema_path, "r", encoding="utf-8") as f_schema:
+                schemes = json.load(f_schema)
+                
+            query_lower = q_text.lower()
+            matched_context = ""
+            
+            # Check PM Kisan
+            if "kisan" in query_lower or "pm-kisan" in query_lower or "pmkisan" in query_lower:
+                pk = schemes.get("pm_kisan", {})
+                matched_context += f"[STRUCTURED SCHEME RULES - {pk.get('name')}]\n"
+                matched_context += f"- Benefit: {pk.get('benefit')}\n"
+                matched_context += f"- Land Limit: Max {pk.get('land_limit_hectares')} hectares\n"
+                matched_context += f"- Rules: {pk.get('eligibility_rules')}\n"
+                matched_context += f"- Exclusions: {', '.join(pk.get('exclusions', []))}\n\n"
+                
+            # Check Ayushman Bharat
+            if "ayushman" in query_lower or "pm-jay" in query_lower or "pmjay" in query_lower:
+                ab = schemes.get("ayushman_bharat", {})
+                matched_context += f"[STRUCTURED SCHEME RULES - {ab.get('name')}]\n"
+                matched_context += f"- Benefit: {ab.get('benefit')}\n"
+                matched_context += f"- Rules: {ab.get('eligibility_rules')}\n"
+                matched_context += f"- Documents required: {', '.join(ab.get('documents_required', []))}\n"
+                matched_context += f"- Exclusions: {', '.join(ab.get('exclusions', []))}\n\n"
+                
+            # Check MGNREGA
+            if "mgnrega" in query_lower or "nrega" in query_lower or "muster roll" in query_lower or "musterroll" in query_lower:
+                mn = schemes.get("mgnrega", {})
+                matched_context += f"[STRUCTURED SCHEME RULES - {mn.get('name')}]\n"
+                matched_context += f"- Benefit: {mn.get('benefit')}\n"
+                matched_context += f"- Rules: {mn.get('eligibility_rules')}\n"
+                matched_context += f"- Signatory Authority: {mn.get('signatory_authority')}\n"
+                matched_context += f"- Work Allocation Time Limit: {mn.get('time_limit_days')} days\n"
+                matched_context += f"- Unemployment Rule: {mn.get('unemployment_allowance_rule')}\n\n"
+                
+            # Check PMAY
+            if "awas" in query_lower or "yojana" in query_lower or "pmay" in query_lower or "housing" in query_lower:
+                pa = schemes.get("pmay", {})
+                matched_context += f"[STRUCTURED SCHEME RULES - {pa.get('name')}]\n"
+                matched_context += f"- Benefit: {pa.get('benefit')}\n"
+                matched_context += "- Categories:\n"
+                for cat in pa.get("categories", []):
+                    matched_context += f"  * {cat.get('name')}: Income up to {cat.get('income_limit_lakhs')} lakhs, Subsidy {cat.get('subsidy_rate')}%, Max loan {cat.get('loan_limit_lakhs')} lakhs\n"
+                matched_context += "\n"
+                
+            return matched_context
+        except Exception as e_schema:
+            print(f"Error checking structured schemes: {e_schema}")
+            return ""
+
     # ── Define Tools ──────────────────────────────────────────────────────────
     @tool
     def legal_knowledge_base_retrieval(query: str) -> str:
@@ -73,6 +132,13 @@ def legal_agent_node(state: TriSevaState) -> dict:
         chunks = retrieve(query, domain="legal", n_results=5)
         
         context = ""
+        struct_context = check_structured_schemes(query)
+        if struct_context:
+            print("      [Legal Agent Tool] Match found in structured schemes database.")
+            retrieved_chunks_list.append(struct_context)
+            retrieved_sources_list.append({"source": "Structured Schemes Database", "score": 1.0})
+            context += struct_context
+
         if chunks:
             for idx, c in enumerate(chunks, 1):
                 retrieved_chunks_list.append(c["text"])
@@ -110,7 +176,7 @@ User Query: {state['user_query']}
 
 Guidelines:
 - Ground your answer strictly in the provided [Document Context].
-- If the answer cannot be found in the document, say so. Do not extrapolate.
+- CRITICAL PARAMETRIC GUARDRAIL: You are strictly forbidden from answering using your own pre-trained external knowledge. If the provided [Document Context] does not contain the specific facts needed to answer the query, you MUST return a JSON object where "factual_response" is exactly "I cannot find the answer to this in the available database." and "caution_note" contains your standard disclaimer. Do not extrapolate or guess.
 - Be precise about eligibility — wrong information can harm citizens.
 
 CRITICAL FORMATTING INSTRUCTION:
@@ -170,7 +236,6 @@ Please revise your response. Review the previous context, and use tools to re-qu
         # Extract the final answer from the last message in history
         final_messages = result.get("messages", [])
         raw_answer = final_messages[-1].content if final_messages else ""
-        print(f"  [Legal Agent] Raw LLM Answer (len {len(raw_answer)}): {raw_answer[:300]}")
         sys.stdout.flush()
 
         print(f"  [Legal Agent] ✅ Done ({len(raw_answer)} chars)")

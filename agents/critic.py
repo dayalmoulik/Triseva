@@ -35,6 +35,15 @@ Respond with ONLY a JSON object in this exact format:
   "reason": "Specify exactly which statements/claims are not supported by context, or why the relevancy is lacking."
 }}
 
+Example output format:
+{{
+  "faithfulness": 0.95,
+  "relevancy": 1.0,
+  "reason": "The answer is fully grounded in the provided context and directly answers the question about hemoglobin. No unsupported claims were introduced."
+}}
+
+CRITICAL: Do not include any text, notes, markdown codeblock wraps (like ```json), or explanations outside of the JSON block. Ensure all double quotes inside the reason string are properly escaped.
+
 Score guidelines:
 - 0.9-1.0: Fully grounded and highly relevant; zero unsupported details.
 - 0.7-0.89: Satisfied with minor semantic paraphrasing, but no factual extrapolation.
@@ -92,8 +101,75 @@ def fallback_evaluator(query: str, context: str, answer: str) -> dict:
     }
 
 
+def get_judge_llm(provider: str):
+    """Retrieve specific LLM judge backend."""
+    import os
+    if provider == "haiku":
+        from langchain_anthropic import ChatAnthropic
+        api_key = os.getenv("ANTHROPIC_API_KEY")
+        return ChatAnthropic(
+            model="claude-haiku-4-5-20251001",
+            api_key=api_key,
+            temperature=0.0,
+            max_tokens=256,
+            timeout=30,
+        )
+    elif provider == "sarvam":
+        from langchain_openai import ChatOpenAI
+        api_key = os.getenv("SARVAM_API_KEY")
+        return ChatOpenAI(
+            model="sarvam-105b",
+            openai_api_key=api_key,
+            openai_api_base="https://api.sarvam.ai/v1",
+            temperature=0.0,
+            max_tokens=256,
+            timeout=30,
+        )
+    return None
+
+
+def calculate_nli_overlap(context: str, answer: str) -> float:
+    """Calculate rule-based lexical overlap representing factual NLI alignment."""
+    import re
+    def get_clean_words(text: str) -> set:
+        words = re.findall(r'\b\w+\b', text.lower())
+        stop_words = {
+            'the', 'a', 'an', 'and', 'or', 'but', 'is', 'are', 'was', 'were', 'to', 'of', 'in', 'on', 'at', 'by',
+            'for', 'with', 'about', 'against', 'between', 'into', 'through', 'during', 'before', 'after', 'above',
+            'below', 'from', 'up', 'down', 'in', 'out', 'off', 'over', 'under', 'again', 'further', 'then', 'once',
+            'this', 'that', 'these', 'those', 'it', 'its', 'they', 'them', 'their', 'our', 'we', 'you', 'your',
+            'he', 'him', 'his', 'she', 'her', 'i', 'me', 'my', 'myself'
+        }
+        return {w for w in words if w not in stop_words}
+        
+    context_words = get_clean_words(context)
+    answer_words = get_clean_words(answer)
+    
+    if not answer_words:
+        return 1.0
+        
+    overlap = len(answer_words & context_words) / len(answer_words)
+    return overlap
+
+
+def _parse_critic_json(content) -> dict:
+    """Parse JSON response from the LLM judges."""
+    import json
+    if isinstance(content, list):
+        content = " ".join(
+            b.get("text", "") for b in content
+            if isinstance(b, dict) and b.get("type") == "text"
+        )
+    content = content.strip()
+    if "```" in content:
+        content = content.split("```")[1]
+        if content.startswith("json"):
+            content = content[4:]
+    return json.loads(content)
+
+
 def critic_node(state: TriSevaState) -> dict:
-    """Check faithfulness and relevancy of draft answer against retrieved chunks."""
+    """Check faithfulness and relevancy of draft answer against retrieved chunks using a gated Dual-Judge system."""
     print(f"  [Critic] Evaluating answer faithfulness and relevancy...")
 
     draft    = state.get("draft_answer", "")
@@ -121,41 +197,91 @@ def critic_node(state: TriSevaState) -> dict:
 
     context = "\n\n".join(eval_chunks)  # use all retrieved chunks and document context
 
-    try:
-        global llm, critic_chain
-        if llm is None:
-            llm = get_llm(temperature=0.0, max_tokens=256)
-            critic_chain = CRITIC_PROMPT | llm
+    # 1. Calculate NLI Lexical Overlap Pre-filter
+    nli_score = calculate_nli_overlap(context, draft)
+    telemetry["nli_prefilter_score"] = nli_score
 
-        response = critic_chain.invoke({
+    if nli_score < 0.25:
+        print(f"  [Critic NLI Pre-filter] High contradiction detected (overlap: {nli_score:.2f}). Auto-rejecting.")
+        telemetry["nli_prefilter_action"] = "auto_reject"
+        telemetry["dual_judge_triggered"] = False
+        telemetry["judge_disagreement"] = 0.0
+        return {
+            "faithfulness_score": 0.20,
+            "relevancy_score": 0.50,
+            "final_answer": "",
+            "telemetry": telemetry,
+            "critic_feedback": "Lexical NLI pre-filter flagged extreme factual mismatch between context and response.",
+        }
+    elif nli_score > 0.92:
+        print(f"  [Critic NLI Pre-filter] High entailment detected (overlap: {nli_score:.2f}). Auto-approving.")
+        telemetry["nli_prefilter_action"] = "auto_approve"
+        telemetry["dual_judge_triggered"] = False
+        telemetry["judge_disagreement"] = 0.0
+        return {
+            "faithfulness_score": 0.95,
+            "relevancy_score": 0.95,
+            "final_answer": draft,
+            "telemetry": telemetry,
+            "critic_feedback": None,
+        }
+
+    # Proceed to LLM Judges
+    telemetry["nli_prefilter_action"] = "llm_judging"
+    dual_judge_triggered = False
+    judge_disagreement = 0.0
+
+    try:
+        # Run Judge 1: Claude Haiku
+        haiku_llm = get_judge_llm("haiku")
+        haiku_chain = CRITIC_PROMPT | haiku_llm
+        
+        response = haiku_chain.invoke({
             "query":   query,
             "context": context[:20000],
             "answer":  draft[:2000],
         })
 
-        content = response.content
-        if isinstance(content, list):
-            content = " ".join(
-                b.get("text", "") for b in content
-                if isinstance(b, dict) and b.get("type") == "text"
-            )
-
-        # Parse JSON response
-        import json
-        content = content.strip()
-        if "```" in content:
-            content = content.split("```")[1]
-            if content.startswith("json"):
-                content = content[4:]
-
-        evaluation = json.loads(content)
+        evaluation = _parse_critic_json(response.content)
+        f_haiku = float(evaluation.get("faithfulness", evaluation.get("score", 0.8)))
+        r_haiku = float(evaluation.get("relevancy", 0.8))
+        reason = evaluation.get("reason", "")
         
-        # Support both new and old response format schemas
-        f_score = float(evaluation.get("faithfulness", evaluation.get("score", 0.8)))
-        r_score = float(evaluation.get("relevancy", 0.8))
-        reason  = evaluation.get("reason", "")
+        print(f"  [Critic Judge 1 (Haiku)] Faithfulness: {f_haiku:.2f} | Relevancy: {r_haiku:.2f} | {reason}")
 
-        print(f"  [Critic] Faithfulness: {f_score:.2f} | Relevancy: {r_score:.2f} | {reason}")
+        # Check if score falls in borderline band
+        if 0.5 <= f_haiku < 0.85:
+            dual_judge_triggered = True
+            print(f"  [Critic] Borderline score detected ({f_haiku:.2f}). Triggering Judge 2 (Sarvam-105B)...")
+            
+            sarvam_llm = get_judge_llm("sarvam")
+            sarvam_chain = CRITIC_PROMPT | sarvam_llm
+            
+            response_sarvam = sarvam_chain.invoke({
+                "query":   query,
+                "context": context[:20000],
+                "answer":  draft[:2000],
+            })
+            
+            eval_sarvam = _parse_critic_json(response_sarvam.content)
+            f_sarvam = float(eval_sarvam.get("faithfulness", eval_sarvam.get("score", 0.8)))
+            r_sarvam = float(eval_sarvam.get("relevancy", 0.8))
+            reason_sarvam = eval_sarvam.get("reason", "")
+            
+            print(f"  [Critic Judge 2 (Sarvam-105B)] Faithfulness: {f_sarvam:.2f} | Relevancy: {r_sarvam:.2f} | {reason_sarvam}")
+            
+            # Resolve scores conservatively (minimum)
+            f_score = min(f_haiku, f_sarvam)
+            r_score = min(r_haiku, r_sarvam)
+            judge_disagreement = abs(f_haiku - f_sarvam)
+            reason = f"Haiku: {reason} | Sarvam: {reason_sarvam}"
+        else:
+            # High confidence score: accept Haiku's judgment
+            f_score = f_haiku
+            r_score = r_haiku
+            
+        telemetry["dual_judge_triggered"] = dual_judge_triggered
+        telemetry["judge_disagreement"] = judge_disagreement
 
         approved = (f_score >= FAITHFULNESS_THRESHOLD and r_score >= RELEVANCY_THRESHOLD)
         return {
@@ -167,8 +293,11 @@ def critic_node(state: TriSevaState) -> dict:
         }
 
     except Exception as e:
-        print(f"  [Critic] Evaluation error: {str(e)[:80]} — falling back to local validator")
+        print(f"  [Critic] LLM Judge Error: {str(e)[:80]} — falling back to local validator")
         telemetry["is_fallback_critic"] = True
+        telemetry["dual_judge_triggered"] = False
+        telemetry["judge_disagreement"] = 0.0
+        
         fb = fallback_evaluator(query, context, draft)
         f_score = fb["faithfulness"]
         r_score = fb["relevancy"]

@@ -25,6 +25,7 @@ from agents.legal_agent import legal_agent_node
 from agents.agri_agent import agri_agent_node
 from agents.critic import critic_node, should_retry
 from agents.multimodal import image_processing_node
+from agents.translation_nodes import translation_pre_node, translation_post_node
 
 import signal
 import threading
@@ -41,6 +42,8 @@ def build_graph():
     graph.add_node("legal_agent",  legal_agent_node)
     graph.add_node("agri_agent",   agri_agent_node)
     graph.add_node("critic",       critic_node)
+    graph.add_node("translation_pre", translation_pre_node)
+    graph.add_node("translation_post", translation_post_node)
     graph.add_node("memory_write", memory_write_node)
 
     # ── Entry point ───────────────────────────────────────────────
@@ -48,10 +51,12 @@ def build_graph():
 
     # ── Fixed edges ───────────────────────────────────────────────
     graph.add_edge("memory_read",  "image_processing")
-    graph.add_edge("image_processing", "orchestrator")
+    graph.add_edge("image_processing", "translation_pre")
+    graph.add_edge("translation_pre", "orchestrator")
     graph.add_edge("health_agent", "critic")
     graph.add_edge("legal_agent",  "critic")
     graph.add_edge("agri_agent",   "critic")
+    graph.add_edge("translation_post", "memory_write")
     graph.add_edge("memory_write", END)
 
     # ── Conditional: orchestrator → domain agent ──────────────────
@@ -71,7 +76,7 @@ def build_graph():
         should_retry,
         {
             "retry":   "orchestrator",
-            "approve": "memory_write",
+            "approve": "translation_post",
         }
     )
 
@@ -82,11 +87,27 @@ def build_graph():
 triseva = build_graph()
 
 
+from langchain_core.callbacks import BaseCallbackHandler
+
+class RunIDCallbackHandler(BaseCallbackHandler):
+    def __init__(self):
+        self.run_id = None
+        
+    def on_chain_start(self, serialized, inputs, *, run_id, **kwargs):
+        if self.run_id is None:
+            self.run_id = str(run_id)
+
+
 def ask(query: str, session_id: str = "default", image_path: str = None, domain_override: str = None):
     """Main entry point to query TriSeva."""
     import time
     start_time = time.time()
-    config = {"configurable": {"thread_id": session_id}}
+    
+    handler = RunIDCallbackHandler()
+    config = {
+        "configurable": {"thread_id": session_id},
+        "callbacks": [handler]
+    }
 
     result = [None]
     error  = [None]
@@ -140,6 +161,7 @@ def ask(query: str, session_id: str = "default", image_path: str = None, domain_
             "quiz":       [],
             "sources":    [],
             "telemetry":  {},
+            "run_id":     None,
         }
 
     if error[0]:
@@ -151,14 +173,23 @@ def ask(query: str, session_id: str = "default", image_path: str = None, domain_
     telemetry["latency"] = round(latency, 2)
     telemetry["retries"] = r.get("retry_count", 0)
 
+    answer_text = r.get("final_answer") or r.get("draft_answer") or ""
+    disclaimer_text = r.get("domain_disclaimer")
+    if disclaimer_text:
+        answer_text += f"\n\n{disclaimer_text}"
+
     return {
-        "answer":      r.get("final_answer") or r.get("draft_answer"),
-        "domain":      r.get("domain"),
-        "score":       r.get("faithfulness_score"),
-        "disclaimer":  r.get("domain_disclaimer"),
-        "quiz":        r.get("quiz"),
-        "sources":     r.get("sources", []),
-        "telemetry":   telemetry,
+        "answer":          answer_text,
+        "domain":          r.get("domain"),
+        "score":           r.get("faithfulness_score"),
+        "disclaimer":      disclaimer_text,
+        "quiz":            r.get("quiz"),
+        "sources":         r.get("sources", []),
+        "telemetry":       telemetry,
+        "run_id":          handler.run_id,
+        "original_query":  r.get("original_query", query),
+        "english_query":   r.get("user_query", query),
+        "draft_answer":    r.get("draft_answer", ""),
     }
 
 

@@ -24,6 +24,8 @@ data/models/domain_router/
 
 # Local SQLite databases (Chainlit will recreate its db on launch)
 chainlit.db
+data/translation_cache.json
+test_git_push.txt
 
 # OS files
 .DS_Store
@@ -33,4 +35,12 @@ Thumbs.db
 *.docx
 *.xlsx
 *.pptx
+*.pdf
+*.txt
+!requirements.txt
+
+# Scratch and evaluation results
+.deepeval/
+evaluation/results/
+scratch/
 

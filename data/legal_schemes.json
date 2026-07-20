@@ -1,0 +1,67 @@
+{
+  "pm_kisan": {
+    "name": "PM Kisan Samman Nidhi",
+    "benefit": "Rs. 6000 per year in three equal instalments of Rs. 2000.",
+    "land_limit_hectares": 2.0,
+    "eligibility_rules": "Small and marginal farmer families with combined landholding up to 2 hectares.",
+    "exclusions": [
+      "Institutional landholders",
+      "Farmer families holding constitutional posts",
+      "Serving or retired government employees",
+      "Retirees with monthly pension above Rs. 10000",
+      "Income tax payers of last assessment year"
+    ]
+  },
+  "ayushman_bharat": {
+    "name": "Ayushman Bharat PM-JAY",
+    "benefit": "Health cover of Rs. 5 lakh per family per year for secondary and tertiary care hospitalisation.",
+    "eligibility_rules": "Identified families based on SECC 2011 database criteria.",
+    "documents_required": [
+      "Aadhaar card",
+      "Ration card",
+      "Income certificate"
+    ],
+    "exclusions": [
+      "Families paying income tax",
+      "Families owning motorized vehicles"
+    ]
+  },
+  "mgnrega": {
+    "name": "Mahatma Gandhi National Rural Employment Guarantee Act",
+    "benefit": "Guarantees 100 days of wage employment per financial year to rural households.",
+    "eligibility_rules": "Adult members of rural households willing to do unskilled manual work.",
+    "signatory_authority": "Authorised person of the Gram Panchayat or Programme Officer.",
+    "time_limit_days": 15,
+    "unemployment_allowance_rule": "If work is not provided within 15 days of application, unemployment allowance is paid."
+  },
+  "pmay": {
+    "name": "Pradhan Mantri Awas Yojana",
+    "benefit": "Interest subsidy on home loans for affordable housing.",
+    "categories": [
+      {
+        "name": "EWS (Economically Weaker Section)",
+        "income_limit_lakhs": 3.0,
+        "subsidy_rate": 6.5,
+        "loan_limit_lakhs": 6.0
+      },
+      {
+        "name": "LIG (Low Income Group)",
+        "income_limit_lakhs": 6.0,
+        "subsidy_rate": 6.5,
+        "loan_limit_lakhs": 6.0
+      },
+      {
+        "name": "MIG-I (Middle Income Group I)",
+        "income_limit_lakhs": 12.0,
+        "subsidy_rate": 4.0,
+        "loan_limit_lakhs": 9.0
+      },
+      {
+        "name": "MIG-II (Middle Income Group II)",
+        "income_limit_lakhs": 18.0,
+        "subsidy_rate": 3.0,
+        "loan_limit_lakhs": 12.0
+      }
+    ]
+  }
+}

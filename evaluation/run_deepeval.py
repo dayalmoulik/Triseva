@@ -21,6 +21,50 @@ load_dotenv()
 
 from deepeval.metrics import FaithfulnessMetric, AnswerRelevancyMetric
 from deepeval.test_case import LLMTestCase
+from deepeval.models.base_model import DeepEvalBaseLLM
+
+class DeepEvalLangchainWrapper(DeepEvalBaseLLM):
+    def __init__(self, model):
+        self.model = model
+
+    def load_model(self):
+        return self.model
+
+    def generate(self, prompt: str, schema=None) -> str:
+        res = self.model.invoke(prompt)
+        return res.content
+
+    async def a_generate(self, prompt: str, schema=None) -> str:
+        res = await self.model.ainvoke(prompt)
+        return res.content
+
+def get_deepeval_model():
+    provider = os.getenv("EVAL_LLM_PROVIDER", "openai").lower()
+    print(f"Initializing DeepEval evaluation LLM using provider: {provider}")
+    if provider == "groq":
+        from langchain_groq import ChatGroq
+        model_instance = ChatGroq(
+            model="llama-3.3-70b-versatile",
+            api_key=os.getenv("GROQ_API_KEY"),
+            temperature=0.0,
+            max_tokens=2048,
+            timeout=60,
+        )
+        return DeepEvalLangchainWrapper(model_instance)
+    elif provider == "anthropic":
+        from langchain_anthropic import ChatAnthropic
+        model_instance = ChatAnthropic(
+            model="claude-3-5-haiku-latest",
+            api_key=os.getenv("ANTHROPIC_API_KEY"),
+            temperature=0.0,
+            max_tokens=2048,
+            timeout=60,
+        )
+        return DeepEvalLangchainWrapper(model_instance)
+    else:
+        return "gpt-4o-mini"
+
+eval_model = get_deepeval_model()
 
 def evaluate_single_case(q, answer, contexts, gt, name, idx):
     """Evaluate a single test case for a specific configuration using DeepEval."""
@@ -33,9 +77,8 @@ def evaluate_single_case(q, answer, contexts, gt, name, idx):
     )
     
     # Initialize metrics
-    # Force model="gpt-4o-mini"
-    faithfulness_metric = FaithfulnessMetric(threshold=0.7, model="gpt-4o-mini", async_mode=False)
-    relevancy_metric = AnswerRelevancyMetric(threshold=0.7, model="gpt-4o-mini", async_mode=False)
+    faithfulness_metric = FaithfulnessMetric(threshold=0.7, model=eval_model, async_mode=False)
+    relevancy_metric = AnswerRelevancyMetric(threshold=0.7, model=eval_model, async_mode=False)
     
     try:
         faithfulness_metric.measure(test_case)
@@ -93,9 +136,16 @@ def main():
         q = r["question"]
         gt = r["ground_truth"]
         
-        eval_tasks.append((q, r.get("triseva_answer", ""), r.get("triseva_contexts", []), gt, "triseva", idx))
+        triseva_q = r.get("triseva_english_query") or q
+        triseva_ans = r.get("triseva_draft_answer") or r.get("triseva_answer", "")
+        eval_tasks.append((triseva_q, triseva_ans, r.get("triseva_contexts", []), gt, "triseva", idx))
+        
         eval_tasks.append((q, r.get("b1_answer", ""), r.get("b1_contexts", []), gt, "b1_naive", idx))
-        eval_tasks.append((q, r.get("b2_answer", ""), r.get("b2_contexts", []), gt, "b2_nocritic", idx))
+        
+        b2_q = r.get("b2_english_query") or q
+        b2_ans = r.get("b2_draft_answer") or r.get("b2_answer", "")
+        eval_tasks.append((b2_q, b2_ans, r.get("b2_contexts", []), gt, "b2_nocritic", idx))
+        
         eval_tasks.append((q, r.get("b3_answer", ""), r.get("b3_contexts", []), gt, "b3_keyword", idx))
         
     print(f"Total metrics to compute: {len(eval_tasks)} test cases (Faithfulness & Relevancy each).")

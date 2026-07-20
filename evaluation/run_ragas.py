@@ -23,17 +23,48 @@ from ragas.llms import LangchainLLMWrapper
 from ragas.embeddings import LangchainEmbeddingsWrapper
 from langchain_community.embeddings import HuggingFaceEmbeddings
 
-# Setup Ragas LLM using OpenAI GPT-4o-mini for stable structured JSON parsing
-eval_llm = LangchainLLMWrapper(
-    ChatOpenAI(
-        model="gpt-4o-mini",
-        openai_api_key=os.getenv("OPENAI_API_KEY"),
-        temperature=0.0,
-        max_tokens=2048,
-        timeout=60,
-    ),
-    is_finished_parser=lambda x: True
-)
+def get_evaluator_llm():
+    provider = os.getenv("EVAL_LLM_PROVIDER", "openai").lower()
+    print(f"Initializing Ragas evaluation LLM using provider: {provider}")
+    
+    if provider == "groq":
+        from langchain_groq import ChatGroq
+        api_key = os.getenv("GROQ_API_KEY")
+        if not api_key:
+            raise ValueError("GROQ_API_KEY is not set in the environment.")
+        model = ChatGroq(
+            model="llama-3.3-70b-versatile",
+            api_key=api_key,
+            temperature=0.0,
+            max_tokens=2048,
+            timeout=60,
+        )
+    elif provider == "anthropic":
+        from langchain_anthropic import ChatAnthropic
+        api_key = os.getenv("ANTHROPIC_API_KEY")
+        if not api_key:
+            raise ValueError("ANTHROPIC_API_KEY is not set in the environment.")
+        model = ChatAnthropic(
+            model="claude-3-5-haiku-latest",
+            api_key=api_key,
+            temperature=0.0,
+            max_tokens=2048,
+            timeout=60,
+        )
+    else:
+        api_key = os.getenv("OPENAI_API_KEY")
+        if not api_key:
+            raise ValueError("OPENAI_API_KEY is not set in the environment.")
+        model = ChatOpenAI(
+            model="gpt-4o-mini",
+            api_key=api_key,
+            temperature=0.0,
+            max_tokens=2048,
+            timeout=60,
+        )
+    return LangchainLLMWrapper(model, is_finished_parser=lambda x: True)
+
+eval_llm = get_evaluator_llm()
 
 eval_embeddings = LangchainEmbeddingsWrapper(HuggingFaceEmbeddings(
     model_name="all-MiniLM-L6-v2"
@@ -74,8 +105,11 @@ def main():
         q = r["question"]
         gt = r["ground_truth"]
         
-        datasets["triseva"]["question"].append(q)
-        datasets["triseva"]["answer"].append(r.get("triseva_answer", ""))
+        # For TriSeva and B2, evaluate the intermediate English draft against the English query
+        triseva_q = r.get("triseva_english_query") or q
+        triseva_ans = r.get("triseva_draft_answer") or r.get("triseva_answer", "")
+        datasets["triseva"]["question"].append(triseva_q)
+        datasets["triseva"]["answer"].append(triseva_ans)
         datasets["triseva"]["contexts"].append(r.get("triseva_contexts", ["No context."]))
         datasets["triseva"]["ground_truth"].append(gt)
         
@@ -84,8 +118,10 @@ def main():
         datasets["b1_naive"]["contexts"].append(r.get("b1_contexts", ["No context."]))
         datasets["b1_naive"]["ground_truth"].append(gt)
         
-        datasets["b2_nocritic"]["question"].append(q)
-        datasets["b2_nocritic"]["answer"].append(r.get("b2_answer", ""))
+        b2_q = r.get("b2_english_query") or q
+        b2_ans = r.get("b2_draft_answer") or r.get("b2_answer", "")
+        datasets["b2_nocritic"]["question"].append(b2_q)
+        datasets["b2_nocritic"]["answer"].append(b2_ans)
         datasets["b2_nocritic"]["contexts"].append(r.get("b2_contexts", ["No context."]))
         datasets["b2_nocritic"]["ground_truth"].append(gt)
         

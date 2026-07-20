@@ -1,11 +1,13 @@
 import os
 import time
+import requests
 import fitz  # PyMuPDF
 from PIL import Image
 from langchain_core.messages import HumanMessage
 from langchain_google_genai import ChatGoogleGenerativeAI
 from openai import OpenAI
 from agents.state import TriSevaState
+from agents.utils import initialize_telemetry, get_document_context
 
 def extract_text_from_pdf(pdf_path: str) -> str:
     """Extracts text locally from a PDF using PyMuPDF (fitz)."""
@@ -23,6 +25,34 @@ def extract_text_from_pdf(pdf_path: str) -> str:
         print(f"Error parsing PDF locally with fitz: {e}")
         return ""
 
+def extract_text_via_local_ollama(image_bytes: bytes) -> str:
+    """Uses a local Ollama server running Llama-3.2-Vision/Qwen2.5-VL to perform OCR/extraction."""
+    import base64
+    ollama_url = os.getenv("OLLAMA_API_BASE", "http://localhost:11434/api/generate")
+    model_name = os.getenv("OLLAMA_VLM_MODEL", "llama3.2-vision")
+    
+    print(f"Calling local Ollama model '{model_name}' (Local OCR) for text extraction...")
+    try:
+        image_data = base64.b64encode(image_bytes).decode("utf-8")
+        payload = {
+            "model": model_name,
+            "prompt": "Extract all text, numbers, labels, crop recommendations, values, parameters, and tables from this document image. Return only the raw text structured exactly as it appears.",
+            "images": [image_data],
+            "stream": False,
+            "options": {
+                "temperature": 0
+            }
+        }
+        response = requests.post(ollama_url, json=payload, timeout=60)
+        if response.status_code == 200:
+            result = response.json()
+            return result.get("response", "")
+        else:
+            print(f"Ollama server returned error code {response.status_code}: {response.text}")
+    except Exception as e:
+        print(f"Local Ollama VLM OCR extraction failed: {e}")
+    return ""
+
 def extract_text_via_gemini_flash(image_bytes: bytes) -> str:
     """Uses Gemini 2.5 Flash to perform OCR on image bytes."""
     import base64
@@ -31,7 +61,7 @@ def extract_text_via_gemini_flash(image_bytes: bytes) -> str:
         print("GOOGLE_API_KEY is not configured. Skipping Gemini.")
         return ""
     
-    print("Calling Gemini 2.5 Flash (Primary OCR) for text extraction...")
+    print("Calling Gemini 2.5 Flash (Primary Cloud OCR) for text extraction...")
     try:
         image_data = base64.b64encode(image_bytes).decode("utf-8")
         llm = ChatGoogleGenerativeAI(
@@ -63,7 +93,7 @@ def extract_text_via_openai_mini(image_bytes: bytes) -> str:
         print("OPENAI_API_KEY is not configured. Skipping OpenAI.")
         return ""
         
-    print("Calling OpenAI gpt-4o-mini (Fallback OCR) for text extraction...")
+    print("Calling OpenAI gpt-4o-mini (Fallback Cloud OCR) for text extraction...")
     try:
         # Strip comments from key if any
         openai_key = openai_key.split("#")[0].strip()
@@ -119,6 +149,7 @@ def image_processing_node(state: TriSevaState) -> dict:
     ext = os.path.splitext(image_path)[1].lower()
 
     extracted_text = ""
+    use_local_vlm = os.getenv("USE_LOCAL_VLM", "false").lower() == "true"
     
     if ext == ".pdf":
         print("multimodal: Parsing PDF locally via fitz...")
@@ -138,9 +169,16 @@ def image_processing_node(state: TriSevaState) -> dict:
                     page_bytes = pix.tobytes("png")
                     print(f"multimodal: Running OCR on page {page_num + 1}...")
                     
-                    # Try Gemini first
-                    page_text = extract_text_via_gemini_flash(page_bytes)
-                    # Try OpenAI fallback if Gemini fails
+                    page_text = ""
+                    # 1. Try local VLM first if enabled
+                    if use_local_vlm:
+                        page_text = extract_text_via_local_ollama(page_bytes)
+                    
+                    # 2. Try Gemini
+                    if not page_text:
+                        page_text = extract_text_via_gemini_flash(page_bytes)
+                        
+                    # 3. Try OpenAI fallback
                     if not page_text:
                         page_text = extract_text_via_openai_mini(page_bytes)
                         
@@ -156,10 +194,15 @@ def image_processing_node(state: TriSevaState) -> dict:
             with open(image_path, "rb") as f:
                 image_bytes = f.read()
             
-            # Primary OCR: Gemini 2.5 Flash
-            extracted_text = extract_text_via_gemini_flash(image_bytes)
+            # 1. Try local VLM first if enabled
+            if use_local_vlm:
+                extracted_text = extract_text_via_local_ollama(image_bytes)
             
-            # Fallback OCR: OpenAI gpt-4o-mini
+            # 2. Primary Cloud OCR: Gemini 2.5 Flash
+            if not extracted_text:
+                extracted_text = extract_text_via_gemini_flash(image_bytes)
+            
+            # 3. Fallback Cloud OCR: OpenAI gpt-4o-mini
             if not extracted_text:
                 print("multimodal: Gemini OCR failed/skipped. Using OpenAI OCR fallback...")
                 extracted_text = extract_text_via_openai_mini(image_bytes)

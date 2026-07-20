@@ -37,3 +37,6 @@ class TriSevaState(TypedDict):
     domain_override: Optional[str]         # user override choice for routing
     telemetry: Optional[dict]              # dict containing metrics telemetry
     critic_feedback: Optional[str]         # feedback reason from the critic on failure
+    original_language: Optional[str]       # detected language (en-IN, hi-IN)
+    original_query: Optional[str]          # original user query text
+    script_hint: Optional[str]             # devanagari / latin
