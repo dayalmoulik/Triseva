@@ -125,8 +125,21 @@ def get_data_layer():
 # ── User Authentication ──────────────────────────────────────────────────────
 @cl.password_auth_callback
 def auth_callback(username: str, password: str):
-    # Simple open-auth: any name login works, enabling user-segmented past chats
-    return cl.User(identifier=username)
+    import re
+    # Enforce strict user study participant limit (30 users) and credentials
+    required_password = os.getenv("STUDY_PASSWORD") or "triseva@study"
+    
+    # 1. Verify Password
+    if password != required_password:
+        return None
+        
+    # 2. Verify Username Format (study_01 to study_30)
+    user_clean = username.strip().lower()
+    match = re.match(r"^study_(0[1-9]|[1-2][0-9]|30)$", user_clean)
+    if not match:
+        return None
+        
+    return cl.User(identifier=user_clean)
 
 
 # ── Domain styling ─────────────────────────────────────────────────────────
