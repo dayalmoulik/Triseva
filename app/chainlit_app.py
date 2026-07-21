@@ -3,6 +3,8 @@ warnings.filterwarnings("ignore")
 
 import os
 import sys
+import json
+import time
 
 if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding='utf-8')
@@ -186,12 +188,14 @@ async def on_message(message: cl.Message):
     async with cl.Step(name="TriSeva", type="llm") as step:
         step.input = query
 
+        start_time = time.time()
         # Run in thread to avoid blocking the event loop
         result = await cl.make_async(ask)(
             query=query,
             session_id=session_id,
             image_path=image_path,
         )
+        latency = round(time.time() - start_time, 2)
 
         answer     = result.get("answer") or "No answer generated."
         domain     = result.get("domain", "unknown")
@@ -202,6 +206,26 @@ async def on_message(message: cl.Message):
 
         meta  = DOMAIN_META.get(domain, {"icon": "🤖", "label": domain.title(), "color": "#6b7280"})
         step.output = f"Domain: {meta['icon']} {meta['label']} | Faithfulness: {score:.0%}" if score else f"Domain: {meta['icon']} {meta['label']}"
+
+        # ── Write User Study Session Logs ───────────────────────────────────
+        try:
+            log_data = {
+                "session_id": session_id,
+                "username": cl.user_session.get("user").identifier if cl.user_session.get("user") else "anonymous",
+                "query_text": query,
+                "response_text": answer,
+                "selected_domain": domain,
+                "latency_sec": latency,
+                "score": score,
+                "timestamp": time.time()
+            }
+            log_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "logs"))
+            os.makedirs(log_dir, exist_ok=True)
+            log_file = os.path.join(log_dir, "user_study_logs.jsonl")
+            with open(log_file, "a", encoding="utf-8") as lf:
+                lf.write(json.dumps(log_data) + "\n")
+        except Exception as e:
+            print(f"Error writing session logs: {e}")
 
     # ── Build main response ─────────────────────────────────────────────────
     elements = []
