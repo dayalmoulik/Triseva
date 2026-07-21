@@ -117,7 +117,7 @@ default_theme = "light"
 confirm_new_chat = true
 
 # Description of the assistant. This is used for HTML tags.
-description = "TriSeva Multi-Agent AI Assistant"
+description = "TriSeva: A Multi-Agent Retrieval-Augmented System for Explainable Cross-Domain Document Question Answering"
 
 # Chain of Thought (CoT) display mode. Can be "hidden", "tool_call" or "full".
 cot = "full"

@@ -7,11 +7,11 @@ sdk: docker
 pinned: false
 ---
 
-# TriSeva: Multi-Agent AI Assistant for Healthcare, Law, and Agriculture
+# TriSeva: A Multi-Agent Retrieval-Augmented System for Explainable Cross-Domain Document Question Answering across Healthcare, Legal/Government, and Agriculture Domains
 
-TriSeva (meaning "Three Services") is a premium, end-to-end multi-agent AI assistant designed to provide expert assistance across three vital domains: **Healthcare**, **Law/Government Schemes**, and **Agriculture**. 
+TriSeva is an explainable, end-to-end multi-agent AI assistant designed to provide grounded and transparent decision support across three vital domains: **Healthcare**, **Legal/Government Schemes**, and **Agriculture**.
 
-Built with **LangGraph** for orchestrating complex state-driven workflows and **Chainlit** for a modern ChatGPT-style conversational experience, TriSeva features a router for intent classification, domain-specialist agents, a critic loop for faithfulness verification, and a comprehensive RAG pipeline.
+Built with **LangGraph** for orchestrating complex state-driven workflows, **Chainlit** for a modern conversational interface, and **ChromaDB** for knowledge retrieval, TriSeva achieves transparency and Explainable AI (XAI) through source attribution, similarity match scoring, real-time agent workflow tracing, and comprehensive developer audit logs.
 
 ---
 
