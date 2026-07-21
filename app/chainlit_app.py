@@ -126,20 +126,25 @@ def get_data_layer():
 @cl.password_auth_callback
 def auth_callback(username: str, password: str):
     import re
-    # Enforce strict user study participant limit (30 users) and credentials
-    required_password = os.getenv("STUDY_PASSWORD") or "triseva@study"
+    user_clean = username.strip().lower()
     
-    # 1. Verify Password
+    # 1. Verify Admin Account
+    if user_clean == "admin":
+        admin_password = os.getenv("ADMIN_PASSWORD") or "triseva@admin"
+        if password == admin_password:
+            return cl.User(identifier=user_clean, role="admin")
+        return None
+        
+    # 2. Verify regular study participants
+    required_password = os.getenv("STUDY_PASSWORD") or "triseva@study"
     if password != required_password:
         return None
         
-    # 2. Verify Username Format (study_01 to study_30)
-    user_clean = username.strip().lower()
     match = re.match(r"^study_(0[1-9]|[1-2][0-9]|30)$", user_clean)
     if not match:
         return None
         
-    return cl.User(identifier=user_clean)
+    return cl.User(identifier=user_clean, role="user")
 
 
 # ── Domain styling ─────────────────────────────────────────────────────────
