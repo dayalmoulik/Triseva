@@ -296,3 +296,44 @@ hr,
 .MuiDivider-root {
     border-color: rgba(0, 0, 0, 0.03) !important;
 }
+
+/* ==========================================================================
+   Font Size Sizing & Line Height for Chatbot Answers
+   ========================================================================== */
+
+/* Plain text, lists, and general paragraph content inside answers */
+div[data-testid="message"] p,
+div[data-testid="message"] li,
+div[data-testid="message"] span,
+div[data-testid="message"] div {
+    font-size: 16px !important;
+    line-height: 1.65 !important;
+}
+
+/* Headers inside answers */
+div[data-testid="message"] h1 {
+    font-size: 22px !important;
+    font-weight: 700 !important;
+    margin-top: 16px !important;
+    margin-bottom: 8px !important;
+}
+
+div[data-testid="message"] h2 {
+    font-size: 19px !important;
+    font-weight: 600 !important;
+    margin-top: 14px !important;
+    margin-bottom: 6px !important;
+}
+
+div[data-testid="message"] h3 {
+    font-size: 17px !important;
+    font-weight: 600 !important;
+    margin-top: 12px !important;
+    margin-bottom: 4px !important;
+}
+
+/* Code block text size */
+div[data-testid="message"] code,
+div[data-testid="message"] pre {
+    font-size: 14px !important;
+}

@@ -205,7 +205,7 @@ async def on_message(message: cl.Message):
         sources    = result.get("sources", [])
 
         meta  = DOMAIN_META.get(domain, {"icon": "🤖", "label": domain.title(), "color": "#6b7280"})
-        step.output = f"Domain: {meta['icon']} {meta['label']} | Faithfulness: {score:.0%}" if score else f"Domain: {meta['icon']} {meta['label']}"
+        step.output = f"Domain: {meta['icon']} {meta['label']}"
 
         # ── Write User Study Session Logs ───────────────────────────────────
         try:
@@ -230,18 +230,9 @@ async def on_message(message: cl.Message):
     # ── Build main response ─────────────────────────────────────────────────
     elements = []
 
-    # Score bar as text element
-    if score is not None:
-        pct        = int(score * 100)
-        bar_filled = "█" * (pct // 10)
-        bar_empty  = "░" * (10 - pct // 10)
-        score_text = f"**Faithfulness** `{bar_filled}{bar_empty}` **{pct}%**"
-    else:
-        score_text = ""
-
     # Main message content
     header  = f"{meta['icon']} **{meta['label']}**"
-    content = f"{header}\n{score_text}\n\n---\n\n{answer}"
+    content = f"{header}\n\n---\n\n{answer}"
 
     if disclaimer:
         content += f"\n\n---\n> {disclaimer}"
@@ -266,8 +257,7 @@ async def on_message(message: cl.Message):
         src_content = "### 📎 Retrieved Sources\n\n"
         # Sort sources by score descending
         for name, score in sorted(deduped.items(), key=lambda x: x[1], reverse=True):
-            pct = int(score * 100)
-            src_content += f"- `{name}` — **{pct}%** relevance\n"
+            src_content += f"- `{name}`\n"
 
         await cl.Message(
             content=src_content,
