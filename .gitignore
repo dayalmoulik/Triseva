@@ -45,4 +45,6 @@ evaluation/results/
 scratch/
 data/raw/
 data/test_samples/
+data/ocr_cache/
+
 

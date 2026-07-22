@@ -72,7 +72,7 @@ def run_routing_accuracy():
 def main():
     parser = argparse.ArgumentParser(description="TriSeva Comprehensive Evaluator")
     parser.add_argument("--size", type=int, default=15, help="Size of the evaluated dataset")
-    parser.add_argument("--evaluator", type=str, choices=["claude", "sarvam"], default="claude", help="Evaluator model to use")
+    parser.add_argument("--evaluator", type=str, choices=["claude", "sarvam", "dual-judge"], default="claude", help="Evaluator model to use")
     parser.add_argument("--use-english-drafts", action="store_true", help="Evaluate English draft queries/responses")
     args = parser.parse_args()
     
@@ -81,7 +81,7 @@ def main():
     use_en = args.use_english_drafts
     suffix = f"_{evaluator}_en" if use_en else f"_{evaluator}"
     progress_file = f"evaluation/results/answered_questions_{size}.jsonl"
-    report_output_file = f"C:/Users/Moulik/.gemini/antigravity/brain/4cd420c1-483e-42a0-8da9-330dd031dacc/comprehensive_metrics_report_{size}{suffix}.md"
+    report_output_file = f"evaluation/results/comprehensive_metrics_report_{size}{suffix}.md"
     project_report_file = f"evaluation/results/all_metrics_report_{size}{suffix}.md"
 
     # Setup Ragas LLM dynamically

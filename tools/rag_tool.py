@@ -190,7 +190,7 @@ def expand_context_with_neighbors(collection, chunk_id: str, current_text: str) 
 
 
 # ── Core hybrid retrieval with RRF and Re-ranking ────────────────────────────────
-def retrieve(query: str, domain: str, n_results: int = 5) -> List[dict]:
+def retrieve(query: str, domain: str, n_results: int = 5, native_query: str = None) -> List[dict]:
     """Retrieve top-n relevant chunks using Query Expansion and Hybrid Search (E5 + BM25 + RRF + Re-ranking)."""
     import re
     from concurrent.futures import ThreadPoolExecutor
@@ -211,6 +211,12 @@ def retrieve(query: str, domain: str, n_results: int = 5) -> List[dict]:
     expanded_queries = expand_query(query)
     if query not in expanded_queries:
         expanded_queries.insert(0, query)
+
+    # Dual-query enhancement: Include original native Hindi/Hinglish query if provided
+    if native_query and native_query.strip() and native_query.strip() != query.strip():
+        if native_query.strip() not in expanded_queries:
+            expanded_queries.insert(0, native_query.strip())
+            print(f"  [RAG Multilingual] Added native query to parallel retrieval: '{native_query.strip()}'")
         
     print(f"  [RAG] Query expansion generated: {expanded_queries}")
 

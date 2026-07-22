@@ -1,14 +1,111 @@
 import os
 import time
+import hashlib
+import io
 import requests
 import fitz  # PyMuPDF
-from PIL import Image
+from PIL import Image, ImageOps, ImageEnhance
 from langchain_core.messages import HumanMessage
 from langchain_google_genai import ChatGoogleGenerativeAI
 from openai import OpenAI
 from agents.state import TriSevaState
 from agents.utils import initialize_telemetry, get_document_context
 
+# ── Extraction Prompt Configuration ─────────────────────────────────────────────
+EXTRACTION_PROMPT = (
+    "You are an expert Multimodal Document & Medical Prescription OCR Engine.\n"
+    "Your task is to transcribe ALL text from this document image with extreme accuracy, including handwritten text, doctor cursive handwriting, patient details, clinical prescriptions, laboratory test values, land records, government forms, or soil health parameters.\n\n"
+    "Instructions:\n"
+    "1. **Handwritten Prescriptions & Medical Notes**: Pay special attention to doctor handwriting. Transcribe patient name, age/sex, date, clinic/hospital header, doctor name, medication names (brand & generic), strength/dosage (e.g., 625mg, 40mg), frequency instructions (e.g., 1-0-1, 1-0-0, 0-0-1, twice daily), administration timing (e.g., 'after meals', 'before meals', 'empty stomach'), duration (e.g., x 5 days, 1 week), and special advice/instructions (e.g., gum paint massage, gargle, follow-up).\n"
+    "2. **Tables & Structured Data**: Transcribe any tables into clean GitHub Markdown table format with proper headers and cell alignments.\n"
+    "3. **Bilingual / Regional Scripts**: Preserve bilingual text (e.g. Hindi / Devnagari or English) faithfully.\n"
+    "4. **Exact Values**: Preserve all numbers, units (mg, g/dL, pH, ppm, etc.), dates, phone numbers, and web/email addresses accurately.\n"
+    "5. **Formatting**: Structure the output with clear headings and markdown bullet points representing the layout of the original document. Do NOT summarize or omit any prescribed medications or instructions."
+)
+
+CACHE_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data", "ocr_cache")
+
+
+# ── MD5 Caching Utilities ───────────────────────────────────────────────────────
+def get_cached_ocr(file_bytes: bytes) -> str | None:
+    """Checks if file bytes have a cached OCR result by MD5 hash."""
+    try:
+        os.makedirs(CACHE_DIR, exist_ok=True)
+        file_hash = hashlib.md5(file_bytes).hexdigest()
+        cache_path = os.path.join(CACHE_DIR, f"{file_hash}.txt")
+        if os.path.exists(cache_path):
+            with open(cache_path, "r", encoding="utf-8") as f:
+                content = f.read().strip()
+                if content:
+                    print(f"multimodal: Cache HIT for MD5 hash {file_hash[:8]}...")
+                    return content
+    except Exception as e:
+        print(f"multimodal: Cache read warning: {e}")
+    return None
+
+
+def save_ocr_to_cache(file_bytes: bytes, text: str):
+    """Saves extracted OCR text to disk using MD5 hash of file bytes."""
+    if not text or not text.strip():
+        return
+    try:
+        os.makedirs(CACHE_DIR, exist_ok=True)
+        file_hash = hashlib.md5(file_bytes).hexdigest()
+        cache_path = os.path.join(CACHE_DIR, f"{file_hash}.txt")
+        with open(cache_path, "w", encoding="utf-8") as f:
+            f.write(text)
+        print(f"multimodal: Saved OCR result to cache (MD5: {file_hash[:8]}...)")
+    except Exception as e:
+        print(f"multimodal: Cache write warning: {e}")
+
+
+# ── Image Preprocessing Pipeline ───────────────────────────────────────────────
+def preprocess_image_bytes(image_bytes: bytes) -> bytes:
+    """
+    Preprocesses document/prescription image bytes to optimize VLM / OCR readability:
+    1. Correct EXIF orientation.
+    2. Convert RGBA/Palette images to RGB.
+    3. Apply contrast & sharpness enhancement for faint cursive handwriting & medical prescriptions.
+    4. Intelligently resize oversized images (> 2048px) maintaining aspect ratio.
+    """
+    try:
+        image = Image.open(io.BytesIO(image_bytes))
+
+        # 1. Correct EXIF orientation
+        image = ImageOps.exif_transpose(image)
+
+        # 2. Convert to RGB if necessary
+        if image.mode not in ("RGB", "L"):
+            image = image.convert("RGB")
+
+        # 3. Enhance Contrast & Sharpness for better handwriting visibility
+        enhancer_contrast = ImageEnhance.Contrast(image)
+        image = enhancer_contrast.enhance(1.3)
+
+        enhancer_sharpness = ImageEnhance.Sharpness(image)
+        image = enhancer_sharpness.enhance(1.4)
+
+        # 4. Resize if oversized (max dimension 2048px)
+        max_dim = 2048
+        width, height = image.size
+        if width > max_dim or height > max_dim:
+            if width > height:
+                new_w = max_dim
+                new_h = int(height * (max_dim / width))
+            else:
+                new_h = max_dim
+                new_w = int(width * (max_dim / height))
+            image = image.resize((new_w, new_h), Image.Resampling.LANCZOS)
+
+        output_io = io.BytesIO()
+        image.save(output_io, format="JPEG", quality=92)
+        return output_io.getvalue()
+    except Exception as e:
+        print(f"multimodal: Image preprocessing warning (using raw bytes): {e}")
+        return image_bytes
+
+
+# ── PDF Extraction Utilities ────────────────────────────────────────────────────
 def extract_text_from_pdf(pdf_path: str) -> str:
     """Extracts text locally from a PDF using PyMuPDF (fitz)."""
     text = []
@@ -25,18 +122,20 @@ def extract_text_from_pdf(pdf_path: str) -> str:
         print(f"Error parsing PDF locally with fitz: {e}")
         return ""
 
+
+# ── VLM OCR Provider Engines ────────────────────────────────────────────────────
 def extract_text_via_local_ollama(image_bytes: bytes) -> str:
     """Uses a local Ollama server running Llama-3.2-Vision/Qwen2.5-VL to perform OCR/extraction."""
     import base64
     ollama_url = os.getenv("OLLAMA_API_BASE", "http://localhost:11434/api/generate")
     model_name = os.getenv("OLLAMA_VLM_MODEL", "llama3.2-vision")
-    
+
     print(f"Calling local Ollama model '{model_name}' (Local OCR) for text extraction...")
     try:
         image_data = base64.b64encode(image_bytes).decode("utf-8")
         payload = {
             "model": model_name,
-            "prompt": "Extract all text, numbers, labels, crop recommendations, values, parameters, and tables from this document image. Return only the raw text structured exactly as it appears.",
+            "prompt": EXTRACTION_PROMPT,
             "images": [image_data],
             "stream": False,
             "options": {
@@ -46,21 +145,24 @@ def extract_text_via_local_ollama(image_bytes: bytes) -> str:
         response = requests.post(ollama_url, json=payload, timeout=60)
         if response.status_code == 200:
             result = response.json()
-            return result.get("response", "")
+            ans = result.get("response", "")
+            if ans and len(ans.strip()) > 15 and "unable to read" not in ans.lower():
+                return ans
         else:
             print(f"Ollama server returned error code {response.status_code}: {response.text}")
     except Exception as e:
         print(f"Local Ollama VLM OCR extraction failed: {e}")
     return ""
 
+
 def extract_text_via_gemini_flash(image_bytes: bytes) -> str:
-    """Uses Gemini 2.5 Flash to perform OCR on image bytes."""
+    """Uses Gemini 2.5 Flash to perform high-accuracy OCR/prescription reading on image bytes."""
     import base64
     google_key = os.getenv("GOOGLE_API_KEY")
     if not google_key:
         print("GOOGLE_API_KEY is not configured. Skipping Gemini.")
         return ""
-    
+
     print("Calling Gemini 2.5 Flash (Primary Cloud OCR) for text extraction...")
     try:
         image_data = base64.b64encode(image_bytes).decode("utf-8")
@@ -71,7 +173,7 @@ def extract_text_via_gemini_flash(image_bytes: bytes) -> str:
         )
         message = HumanMessage(
             content=[
-                {"type": "text", "text": "Extract all text, numbers, labels, crop recommendations, values, parameters, and tables from this document image. Return only the raw text structured exactly as it appears."},
+                {"type": "text", "text": EXTRACTION_PROMPT},
                 {
                     "type": "image_url",
                     "image_url": {"url": f"data:image/jpeg;base64,{image_data}"},
@@ -79,11 +181,12 @@ def extract_text_via_gemini_flash(image_bytes: bytes) -> str:
             ]
         )
         response = llm.invoke([message])
-        if response.content:
+        if response.content and len(response.content.strip()) > 15:
             return response.content
     except Exception as e:
         print(f"Gemini OCR extraction failed: {e}")
     return ""
+
 
 def extract_text_via_openai_mini(image_bytes: bytes) -> str:
     """Uses OpenAI gpt-4o-mini as a fallback OCR on image bytes."""
@@ -92,10 +195,9 @@ def extract_text_via_openai_mini(image_bytes: bytes) -> str:
     if not openai_key:
         print("OPENAI_API_KEY is not configured. Skipping OpenAI.")
         return ""
-        
+
     print("Calling OpenAI gpt-4o-mini (Fallback Cloud OCR) for text extraction...")
     try:
-        # Strip comments from key if any
         openai_key = openai_key.split("#")[0].strip()
         client = OpenAI(api_key=openai_key)
         image_data = base64.b64encode(image_bytes).decode("utf-8")
@@ -105,7 +207,7 @@ def extract_text_via_openai_mini(image_bytes: bytes) -> str:
                 {
                     "role": "user",
                     "content": [
-                        {"type": "text", "text": "Extract all text, numbers, labels, crop recommendations, values, parameters, and tables from this document image. Return only the raw text structured exactly as it appears."},
+                        {"type": "text", "text": EXTRACTION_PROMPT},
                         {
                             "type": "image_url",
                             "image_url": {"url": f"data:image/jpeg;base64,{image_data}"},
@@ -116,109 +218,124 @@ def extract_text_via_openai_mini(image_bytes: bytes) -> str:
             temperature=0,
         )
         ans = response.choices[0].message.content
-        if ans and "unable to extract" not in ans.lower():
+        if ans and len(ans.strip()) > 15 and "unable to extract" not in ans.lower():
             return ans
     except Exception as e:
         print(f"OpenAI OCR extraction failed: {e}")
     return ""
 
+
+# ── Main Multimodal State Node ──────────────────────────────────────────────────
 def image_processing_node(state: TriSevaState) -> dict:
     """StateGraph Node: Processes the uploaded PDF or image to extract text and store it in state."""
     image_path = state.get("image_path")
     if not image_path:
         return {"image_text": None}
 
-    # Verify file existence
     if not os.path.exists(image_path):
         print(f"multimodal: Image path not found: {image_path}")
         return {"image_text": None}
 
     print(f"multimodal: Processing uploaded file: {image_path}")
-    
-    # 1. Local Cache Check for Test Samples (avoids rate limits during verification)
-    if "user_soil_card" in image_path or "soil_health_card" in image_path:
-        cached_path = "data/test_samples/soil_health_card_ocr.txt"
-        if os.path.exists(cached_path):
-            print("multimodal: Loading cached OCR result for test soil card...")
-            try:
-                with open(cached_path, "r", encoding="utf-8") as f:
-                    return {"image_text": f.read()[:50000]}
-            except Exception as e:
-                print(f"Failed to read cached OCR: {e}")
 
     ext = os.path.splitext(image_path)[1].lower()
 
+    # Read raw bytes for caching & processing
+    try:
+        with open(image_path, "rb") as f:
+            raw_bytes = f.read()
+    except Exception as e:
+        print(f"multimodal: Could not read file bytes: {e}")
+        return {"image_text": None}
+
+    # 1. MD5 Content-Hash Disk Cache Lookup
+    cached_text = get_cached_ocr(raw_bytes)
+    if cached_text:
+        return {"image_text": cached_text[:50000]}
+
+    # Also support static test sample fallback check if MD5 missed
+    if "user_soil_card" in image_path or "soil_health_card" in image_path:
+        legacy_cache = "data/test_samples/soil_health_card_ocr.txt"
+        if os.path.exists(legacy_cache):
+            print("multimodal: Loading cached legacy OCR result for test soil card...")
+            try:
+                with open(legacy_cache, "r", encoding="utf-8") as f:
+                    content = f.read()
+                    save_ocr_to_cache(raw_bytes, content)
+                    return {"image_text": content[:50000]}
+            except Exception as e:
+                print(f"Failed to read cached OCR: {e}")
+
     extracted_text = ""
     use_local_vlm = os.getenv("USE_LOCAL_VLM", "false").lower() == "true"
-    
+
     if ext == ".pdf":
         print("multimodal: Parsing PDF locally via fitz...")
         extracted_text = extract_text_from_pdf(image_path)
-        
-        # If the PDF is scanned (returned no text), extract text by rendering pages as images
+
+        # If PDF is scanned (no digital text), render pages at 300 DPI for OCR
         if not extracted_text.strip():
-            print("multimodal: PDF has no digital text (scanned PDF). Rendering pages to perform OCR...")
+            print("multimodal: PDF has no digital text (scanned PDF). Rendering pages at 300 DPI for OCR...")
             try:
                 doc = fitz.open(image_path)
                 pdf_pages_text = []
-                # Process up to 5 pages to avoid massive contexts and rate limits
-                max_pages = min(len(doc), 5)
+                # Process up to 10 pages for scanned documents
+                max_pages = min(len(doc), 10)
                 for page_num in range(max_pages):
                     page = doc.load_page(page_num)
-                    pix = page.get_pixmap(dpi=150)
+                    # 300 DPI high resolution rendering for clear text
+                    pix = page.get_pixmap(dpi=300)
                     page_bytes = pix.tobytes("png")
+                    processed_page_bytes = preprocess_image_bytes(page_bytes)
                     print(f"multimodal: Running OCR on page {page_num + 1}...")
-                    
+
                     page_text = ""
-                    # 1. Try local VLM first if enabled
                     if use_local_vlm:
-                        page_text = extract_text_via_local_ollama(page_bytes)
-                    
-                    # 2. Try Gemini
+                        page_text = extract_text_via_local_ollama(processed_page_bytes)
                     if not page_text:
-                        page_text = extract_text_via_gemini_flash(page_bytes)
-                        
-                    # 3. Try OpenAI fallback
+                        page_text = extract_text_via_gemini_flash(processed_page_bytes)
                     if not page_text:
-                        page_text = extract_text_via_openai_mini(page_bytes)
-                        
+                        page_text = extract_text_via_openai_mini(processed_page_bytes)
+
                     if page_text.strip():
                         pdf_pages_text.append(f"--- Page {page_num + 1} ---\n{page_text}")
                 doc.close()
                 extracted_text = "\n\n".join(pdf_pages_text)
             except Exception as e:
                 print(f"multimodal: Failed to OCR scanned PDF: {e}")
-                
-    elif ext in [".png", ".jpg", ".jpeg", ".jfif"]:
+
+    elif ext in [".png", ".jpg", ".jpeg", ".jfif", ".webp"]:
         try:
-            with open(image_path, "rb") as f:
-                image_bytes = f.read()
-            
+            # Run image preprocessing (EXIF transpose, contrast/sharpness enhancement, intelligent resize)
+            processed_bytes = preprocess_image_bytes(raw_bytes)
+
             # 1. Try local VLM first if enabled
             if use_local_vlm:
-                extracted_text = extract_text_via_local_ollama(image_bytes)
-            
+                extracted_text = extract_text_via_local_ollama(processed_bytes)
+
             # 2. Primary Cloud OCR: Gemini 2.5 Flash
             if not extracted_text:
-                extracted_text = extract_text_via_gemini_flash(image_bytes)
-            
+                extracted_text = extract_text_via_gemini_flash(processed_bytes)
+
             # 3. Fallback Cloud OCR: OpenAI gpt-4o-mini
             if not extracted_text:
                 print("multimodal: Gemini OCR failed/skipped. Using OpenAI OCR fallback...")
-                extracted_text = extract_text_via_openai_mini(image_bytes)
+                extracted_text = extract_text_via_openai_mini(processed_bytes)
+
         except Exception as e:
             print(f"multimodal: Image loading or processing failed: {e}")
     else:
         print(f"multimodal: Unsupported file extension: {ext}")
 
-    if extracted_text:
-        # Truncate document text to a safe size to avoid payload-too-large gateway issues (403 Forbidden)
+    if extracted_text and len(extracted_text.strip()) > 15:
+        save_ocr_to_cache(raw_bytes, extracted_text)
         max_chars = 50000
         if len(extracted_text) > max_chars:
             print(f"multimodal: Truncating extracted text from {len(extracted_text)} to {max_chars} characters.")
             extracted_text = extracted_text[:max_chars]
         print(f"multimodal: Successfully extracted {len(extracted_text)} characters.")
     else:
-        print("multimodal: No text could be extracted.")
+        print("multimodal: No valid text could be extracted.")
+        extracted_text = None
 
-    return {"image_text": extracted_text if extracted_text else None}
+    return {"image_text": extracted_text}

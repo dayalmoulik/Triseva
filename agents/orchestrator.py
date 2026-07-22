@@ -68,7 +68,7 @@ def regex_keyword_router(query: str) -> str:
     
     # Define regex patterns for each domain
     health_keywords = r"\b(haemoglobin|anemia|blood|sugar|diabetes|glucose|metformin|thyroid|tsh|cholesterol|kidney|creatinine|fever|covid|sore|throat|cough|dose|prescription|medical|health|patient|disease|treatment|doctor|clinical|tablet|vaccine|hospital|symptom|illness)\b"
-    legal_keywords = r"\b(kisan|pmkisan|ayushman|pm-jay|housing|pmay|mgnrega|scholarship|rti|legal|court|bpl|eligibility|scheme|subsidy|pension|tax|government|dlsa|slsa|citizen|act|section|welfare|rights|laws|tribunal|appeals)\b"
+    legal_keywords = r"\b(kisan|pmkisan|ayushman|pm-jay|housing|pmay|mgnrega|mnrega|nrega|scholarship|rti|legal|court|bpl|eligibility|scheme|subsidy|pension|tax|government|dlsa|slsa|citizen|act|section|welfare|rights|laws|tribunal|appeals)\b"
     agri_keywords = r"\b(crop|seed|soil|fertiliser|fertilizer|farming|harvest|kharif|rabi|pest|yield|cultivation|monsoon|irrigate|irrigation|drip|sprinkler|mandi|msp|procurement|krishi|kvk|agriculture|advisory|farmer|farmers|pesticide|sowing)\b"
     
     health_matches = len(re.findall(health_keywords, query_lower))

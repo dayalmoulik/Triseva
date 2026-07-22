@@ -70,7 +70,8 @@ def agri_agent_node(state: TriSevaState) -> dict:
         Use this as your primary tool to retrieve grounded facts.
         """
         print(f"    [Agri Agent Tool] Querying local KB: '{query}'")
-        chunks = retrieve(query, domain="agriculture", n_results=5)
+        orig_q = state.get("original_query")
+        chunks = retrieve(query, domain="agriculture", n_results=5, native_query=orig_q)
         
         context = ""
         if chunks:

@@ -97,7 +97,7 @@ def legal_agent_node(state: TriSevaState) -> dict:
                 matched_context += f"- Exclusions: {', '.join(ab.get('exclusions', []))}\n\n"
                 
             # Check MGNREGA
-            if "mgnrega" in query_lower or "nrega" in query_lower or "muster roll" in query_lower or "musterroll" in query_lower:
+            if "mgnrega" in query_lower or "mnrega" in query_lower or "nrega" in query_lower or "muster roll" in query_lower or "musterroll" in query_lower:
                 mn = schemes.get("mgnrega", {})
                 matched_context += f"[STRUCTURED SCHEME RULES - {mn.get('name')}]\n"
                 matched_context += f"- Benefit: {mn.get('benefit')}\n"
@@ -129,7 +129,8 @@ def legal_agent_node(state: TriSevaState) -> dict:
         Use this as your primary tool to retrieve grounded facts.
         """
         print(f"    [Legal Agent Tool] Querying local KB: '{query}'")
-        chunks = retrieve(query, domain="legal", n_results=5)
+        orig_q = state.get("original_query")
+        chunks = retrieve(query, domain="legal", n_results=5, native_query=orig_q)
         
         context = ""
         struct_context = check_structured_schemes(query)

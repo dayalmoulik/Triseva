@@ -109,8 +109,12 @@ def process_single_question(record, idx, size, enable_trace=False):
         record["triseva_english_query"] = res.get("english_query", q)
         record["triseva_draft_answer"] = res.get("draft_answer", "")
         
-        chunks = retrieve(q, domain=domain, n_results=3)
-        record["triseva_contexts"] = [c["text"] for c in chunks] if chunks else ["No context."]
+        actual_chunks = res.get("retrieved_chunks")
+        if actual_chunks and isinstance(actual_chunks, list) and len(actual_chunks) > 0 and actual_chunks[0] != "No context.":
+            record["triseva_contexts"] = actual_chunks
+        else:
+            chunks = retrieve(q, domain=domain, n_results=5)
+            record["triseva_contexts"] = [c["text"] for c in chunks] if chunks else ["No context."]
         record["triseva_latency"] = res.get("telemetry", {}).get("latency", 0.0)
         record["triseva_retries"] = res.get("telemetry", {}).get("retries", 0)
     except Exception as e:

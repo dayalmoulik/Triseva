@@ -185,6 +185,7 @@ def ask(query: str, session_id: str = "default", image_path: str = None, domain_
         "disclaimer":      disclaimer_text,
         "quiz":            r.get("quiz"),
         "sources":         r.get("sources", []),
+        "retrieved_chunks": r.get("retrieved_chunks", []),
         "telemetry":       telemetry,
         "run_id":          handler.run_id,
         "original_query":  r.get("original_query", query),

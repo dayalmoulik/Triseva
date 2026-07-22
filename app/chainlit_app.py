@@ -156,6 +156,46 @@ DOMAIN_META = {
     "agriculture": {"icon": "🌾", "label": "Agriculture",       "color": "#0f766e"},
 }
 
+# ── Local Document to Official Web Portal Mapping ───────────────────────────
+LOCAL_TO_WEB_MAP = {
+    "bnss": "https://www.mha.gov.in",
+    "bns": "https://www.mha.gov.in",
+    "bsa": "https://www.mha.gov.in",
+    "dpdp": "https://www.meity.gov.in",
+    "rti": "https://rti.gov.in",
+    "nfsa": "https://dfpd.gov.in",
+    "pm-rkvy": "https://rkvy.nic.in",
+    "pdmc": "https://pmksy.gov.in",
+    "nfsm": "https://nfsm.gov.in",
+    "midh": "https://midh.gov.in",
+    "atma": "https://agricoop.nic.in",
+    "fpo": "https://sfacindia.com",
+    "aif": "https://agriinfra.dac.gov.in",
+    "soil": "https://soilhealth.dac.gov.in",
+    "pm-aasha": "https://pmaasha.nic.in",
+    "medline": "https://medlineplus.gov",
+    "health": "https://www.mohfw.gov.in",
+}
+
+def resolve_web_url(source_name: str) -> str:
+    """Returns a valid web URL for a source, mapping local docs to official portals, or None if unmapped."""
+    if not source_name:
+        return None
+    source_lower = source_name.strip().lower()
+    
+    # 1. If already a web URL (e.g., from web search tool)
+    if source_lower.startswith("http://") or source_lower.startswith("https://"):
+        return source_name
+        
+    # 2. Map local vector DB doc prefixes to official portal web URLs
+    for prefix, web_url in LOCAL_TO_WEB_MAP.items():
+        if prefix in source_lower:
+            return web_url
+            
+    # 3. Filter out unmapped local data files
+    return None
+
+
 
 # ── Session start ───────────────────────────────────────────────────────────
 @cl.on_chat_start
@@ -243,23 +283,21 @@ async def on_message(message: cl.Message):
 
 
 
-    # ── Sources as separate message ─────────────────────────────────────────
+    # ── Sources as separate message (Web Links Only) ─────────────────────────
     if sources:
-        # Deduplicate sources by filename, keeping the highest relevance score
-        deduped = {}
+        web_urls = set()
         for s in sources:
             name = s.get("source")
-            score = s.get("score", 0.0)
-            if name:
-                if name not in deduped or score > deduped[name]:
-                    deduped[name] = score
+            url = resolve_web_url(name)
+            if url:
+                web_urls.add(url)
 
-        src_content = "### 📎 Retrieved Sources\n\n"
-        # Sort sources by score descending
-        for name, score in sorted(deduped.items(), key=lambda x: x[1], reverse=True):
-            src_content += f"- `{name}`\n"
+        if web_urls:
+            src_content = "### 🔗 Reference Web Links\n\n"
+            for url in sorted(web_urls):
+                src_content += f"- [{url}]({url})\n"
 
-        await cl.Message(
-            content=src_content,
-            parent_id=msg.id,
-        ).send()
+            await cl.Message(
+                content=src_content,
+                parent_id=msg.id,
+            ).send()

@@ -232,53 +232,53 @@ def critic_node(state: TriSevaState) -> dict:
     judge_disagreement = 0.0
 
     try:
-        # Run Judge 1: Claude Haiku
-        haiku_llm = get_judge_llm("haiku")
-        haiku_chain = CRITIC_PROMPT | haiku_llm
+        # Run Judge 1: Sarvam-105B (Primary Indic Judge)
+        sarvam_llm = get_judge_llm("sarvam")
+        sarvam_chain = CRITIC_PROMPT | sarvam_llm
         
-        response = haiku_chain.invoke({
+        response = sarvam_chain.invoke({
             "query":   query,
             "context": context[:20000],
             "answer":  draft[:2000],
         })
 
         evaluation = _parse_critic_json(response.content)
-        f_haiku = float(evaluation.get("faithfulness", evaluation.get("score", 0.8)))
-        r_haiku = float(evaluation.get("relevancy", 0.8))
+        f_sarvam = float(evaluation.get("faithfulness", evaluation.get("score", 0.8)))
+        r_sarvam = float(evaluation.get("relevancy", 0.8))
         reason = evaluation.get("reason", "")
         
-        print(f"  [Critic Judge 1 (Haiku)] Faithfulness: {f_haiku:.2f} | Relevancy: {r_haiku:.2f} | {reason}")
+        print(f"  [Critic Judge 1 (Sarvam-105B)] Faithfulness: {f_sarvam:.2f} | Relevancy: {r_sarvam:.2f} | {reason}")
 
         # Check if score falls in borderline band
-        if 0.5 <= f_haiku < 0.85:
+        if 0.5 <= f_sarvam < 0.85:
             dual_judge_triggered = True
-            print(f"  [Critic] Borderline score detected ({f_haiku:.2f}). Triggering Judge 2 (Sarvam-105B)...")
+            print(f"  [Critic] Borderline score detected ({f_sarvam:.2f}). Triggering Judge 2 (Claude Haiku)...")
             
-            sarvam_llm = get_judge_llm("sarvam")
-            sarvam_chain = CRITIC_PROMPT | sarvam_llm
+            haiku_llm = get_judge_llm("haiku")
+            haiku_chain = CRITIC_PROMPT | haiku_llm
             
-            response_sarvam = sarvam_chain.invoke({
+            response_haiku = haiku_chain.invoke({
                 "query":   query,
                 "context": context[:20000],
                 "answer":  draft[:2000],
             })
             
-            eval_sarvam = _parse_critic_json(response_sarvam.content)
-            f_sarvam = float(eval_sarvam.get("faithfulness", eval_sarvam.get("score", 0.8)))
-            r_sarvam = float(eval_sarvam.get("relevancy", 0.8))
-            reason_sarvam = eval_sarvam.get("reason", "")
+            eval_haiku = _parse_critic_json(response_haiku.content)
+            f_haiku = float(eval_haiku.get("faithfulness", eval_haiku.get("score", 0.8)))
+            r_haiku = float(eval_haiku.get("relevancy", 0.8))
+            reason_haiku = eval_haiku.get("reason", "")
             
-            print(f"  [Critic Judge 2 (Sarvam-105B)] Faithfulness: {f_sarvam:.2f} | Relevancy: {r_sarvam:.2f} | {reason_sarvam}")
+            print(f"  [Critic Judge 2 (Haiku)] Faithfulness: {f_haiku:.2f} | Relevancy: {r_haiku:.2f} | {reason_haiku}")
             
             # Resolve scores conservatively (minimum)
-            f_score = min(f_haiku, f_sarvam)
-            r_score = min(r_haiku, r_sarvam)
-            judge_disagreement = abs(f_haiku - f_sarvam)
-            reason = f"Haiku: {reason} | Sarvam: {reason_sarvam}"
+            f_score = min(f_sarvam, f_haiku)
+            r_score = min(r_sarvam, r_haiku)
+            judge_disagreement = abs(f_sarvam - f_haiku)
+            reason = f"Sarvam: {reason} | Haiku: {reason_haiku}"
         else:
-            # High confidence score: accept Haiku's judgment
-            f_score = f_haiku
-            r_score = r_haiku
+            # High confidence score: accept Sarvam's judgment
+            f_score = f_sarvam
+            r_score = r_sarvam
             
         telemetry["dual_judge_triggered"] = dual_judge_triggered
         telemetry["judge_disagreement"] = judge_disagreement
