@@ -50,8 +50,15 @@ def _get_reranker():
     return _reranker
 
 def _tokenize(text: str) -> List[str]:
-    """Helper to tokenize text for BM25."""
-    return text.lower().translate(str.maketrans("", "", string.punctuation)).split()
+    """Helper to tokenize text for BM25 with subword/character n-grams for Indic & Hinglish scripts."""
+    words = text.lower().translate(str.maketrans("", "", string.punctuation)).split()
+    tokens = list(words)
+    # Add subword 3-grams and 4-grams for words >= 4 chars to improve Indic stem matching
+    for w in words:
+        if len(w) >= 4:
+            tokens.extend([w[i:i+3] for i in range(len(w) - 2)])
+            tokens.extend([w[i:i+4] for i in range(len(w) - 3)])
+    return tokens
 
 def _get_bm25_index(domain: str):
     """Lazy initialize and cache the BM25 index for a domain."""
@@ -190,7 +197,7 @@ def expand_context_with_neighbors(collection, chunk_id: str, current_text: str) 
 
 
 # ── Core hybrid retrieval with RRF and Re-ranking ────────────────────────────────
-def retrieve(query: str, domain: str, n_results: int = 5, native_query: str = None) -> List[dict]:
+def retrieve(query: str, domain: str, n_results: int = 7, native_query: str = None) -> List[dict]:
     """Retrieve top-n relevant chunks using Query Expansion and Hybrid Search (E5 + BM25 + RRF + Re-ranking)."""
     import re
     from concurrent.futures import ThreadPoolExecutor
@@ -204,8 +211,17 @@ def retrieve(query: str, domain: str, n_results: int = 5, native_query: str = No
     )
 
     if collection.count() == 0:
-        print(f"  [RAG] Warning: collection 'triseva_{domain}' is empty")
-        return []
+        print(f"  [RAG] Collection 'triseva_{domain}' is empty. Auto-building starter knowledge base...")
+        try:
+            from knowledge_base.build_kb import build_knowledge_base
+            build_knowledge_base()
+            collection = client.get_or_create_collection(
+                name=f"triseva_{domain}",
+                embedding_function=ef,
+            )
+        except Exception as e:
+            print(f"  [RAG] Auto-build KB failed: {e}")
+            return []
 
     # Generate expanded queries (3 variations + original)
     expanded_queries = expand_query(query)
