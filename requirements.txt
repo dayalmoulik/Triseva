@@ -3,7 +3,6 @@ chainlit>=2.0.0
 streamlit>=1.30.0
 gradio>=5.0.0
 uvicorn>=0.20.0
-huggingface-hub<0.24.0
 
 # LangGraph & LangChain Core
 langgraph>=0.2.0
