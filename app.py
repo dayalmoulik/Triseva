@@ -9,6 +9,18 @@ load_dotenv()
 # Import core LangGraph engine
 from main import ask
 
+# ZeroGPU Compatibility: Hugging Face ZeroGPU requires at least one @spaces.GPU decorated function
+try:
+    import spaces
+    def gpu_decorator(func):
+        return spaces.GPU(func)
+    print("  [ZeroGPU] spaces module detected and @spaces.GPU decorator initialized.")
+except ImportError:
+    def gpu_decorator(func):
+        return func
+    print("  [CPU Mode] spaces module not present, running standard CPU mode.")
+
+@gpu_decorator
 def process_query(user_message, image, domain_choice):
     if not user_message and image is None:
         return "Please enter a question or upload an image to analyze."
