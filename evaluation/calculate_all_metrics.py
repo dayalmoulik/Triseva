@@ -74,7 +74,13 @@ def main():
     parser.add_argument("--size", type=int, default=15, help="Size of the evaluated dataset")
     parser.add_argument("--evaluator", type=str, choices=["claude", "sarvam", "dual-judge"], default="claude", help="Evaluator model to use")
     parser.add_argument("--use-english-drafts", action="store_true", help="Evaluate English draft queries/responses")
+    parser.add_argument("--eval-multimodal", action="store_true", help="Run multimodal vision benchmark evaluation")
     args = parser.parse_args()
+    
+    if args.eval_multimodal:
+        from evaluation.eval_multimodal import run_multimodal_evaluation
+        run_multimodal_evaluation()
+        return
     
     size = args.size
     evaluator = args.evaluator
