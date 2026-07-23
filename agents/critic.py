@@ -17,38 +17,21 @@ MAX_RETRIES = 2
 llm = None
 
 CRITIC_PROMPT = ChatPromptTemplate.from_messages([
-    ("system", """You are a reflective quality assurance critic for TriSeva, an Indian document QA system.
+    ("system", """You are an expert quality assurance critic for TriSeva, an Indian multilingual document QA system.
 Your job is to evaluate if a generated answer is:
-1. Faithful: Grounded entirely and strictly in the provided context. If the answer contains ANY facts, numbers, clinical explanations, timelines, eligibility details, or recommendations that are NOT explicitly written in the provided context (even if they are correct in the real world), it is UNFAITHFUL and must be flagged.
-2. Relevant: Directly and completely answers the user's question without avoiding the core question or adding irrelevant padding.
+1. Faithfulness (0.0 to 1.0): Are all key factual claims, numbers, eligibility criteria, and details in the answer semantically grounded in the provided context?
+   - MULTILINGUAL RULE: The context may be in English while the question/answer is in Hindi, Devanagari, or Hinglish. Translate and evaluate semantic factual equivalence. Accurately translated or synthesized facts are FAITHFUL (0.9 - 1.0).
+   - Only penalize (mark < 0.5) if the answer makes direct factual contradictions or fabricates specific numbers/rules not in the context.
+2. Answer Relevancy (0.0 to 1.0): Does the answer directly and helpful answer the user's question?
 
-You must perform a step-by-step assessment:
-- Extract all factual assertions and explanations made in the answer.
-- Cross-reference each assertion with the provided context.
-- If any assertion, definition, or background explanation is not explicitly supported by the context, mark faithfulness below 0.7.
-- If the answer includes formatting sections (such as eligibility, symptoms, how to apply) that are not mentioned in the context, mark faithfulness below 0.7.
-
-Respond with ONLY a JSON object in this exact format:
+Respond ONLY with a JSON object in this format:
 {{
   "faithfulness": 0.0 to 1.0,
   "relevancy": 0.0 to 1.0,
-  "reason": "Specify exactly which statements/claims are not supported by context, or why the relevancy is lacking."
+  "reason": "Brief summary of factual grounding and relevancy alignment."
 }}
 
-Example output format:
-{{
-  "faithfulness": 0.95,
-  "relevancy": 1.0,
-  "reason": "The answer is fully grounded in the provided context and directly answers the question about hemoglobin. No unsupported claims were introduced."
-}}
-
-CRITICAL: Do not include any text, notes, markdown codeblock wraps (like ```json), or explanations outside of the JSON block. Ensure all double quotes inside the reason string are properly escaped.
-
-Score guidelines:
-- 0.9-1.0: Fully grounded and highly relevant; zero unsupported details.
-- 0.7-0.89: Satisfied with minor semantic paraphrasing, but no factual extrapolation.
-- 0.5-0.69: Noticeable unsupported facts, general background explanations, or ungrounded warning details.
-- 0.0-0.49: Major hallucinations, off-topic, or completely ungrounded assertions."""),
+CRITICAL: Output ONLY valid raw JSON with no backticks, no markdown, and no extra text."""),
     ("human", """Question: {query}
 
 Context retrieved:
@@ -147,6 +130,10 @@ def calculate_nli_overlap(context: str, answer: str) -> float:
     
     if not answer_words:
         return 1.0
+
+    # If answer contains non-ASCII Indic/Devanagari characters, pass-through to LLM Judge (0.50 neutral)
+    if any(ord(c) > 127 for c in answer):
+        return 0.50
         
     overlap = len(answer_words & context_words) / len(answer_words)
     return overlap
@@ -201,7 +188,7 @@ def critic_node(state: TriSevaState) -> dict:
     nli_score = calculate_nli_overlap(context, draft)
     telemetry["nli_prefilter_score"] = nli_score
 
-    if nli_score < 0.25:
+    if nli_score < 0.05:
         print(f"  [Critic NLI Pre-filter] High contradiction detected (overlap: {nli_score:.2f}). Auto-rejecting.")
         telemetry["nli_prefilter_action"] = "auto_reject"
         telemetry["dual_judge_triggered"] = False

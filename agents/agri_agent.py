@@ -71,7 +71,7 @@ def agri_agent_node(state: TriSevaState) -> dict:
         """
         print(f"    [Agri Agent Tool] Querying local KB: '{query}'")
         orig_q = state.get("original_query")
-        chunks = retrieve(query, domain="agriculture", n_results=5, native_query=orig_q)
+        chunks = retrieve(query, domain="agriculture", n_results=7, native_query=orig_q)
         
         context = ""
         if chunks:

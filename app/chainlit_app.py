@@ -290,7 +290,8 @@ async def on_message(message: cl.Message):
     content = f"{header}\n\n---\n\n{answer}"
 
     if disclaimer:
-        content += f"\n\n---\n> {disclaimer}"
+        clean_disc = disclaimer.replace("⚕️", "").replace("⚖️", "").replace("🌾", "").strip()
+        content += f"\n\n---\n> 💡 *{clean_disc}*"
 
     # Send main answer
     msg = cl.Message(content=content)

@@ -70,7 +70,7 @@ def health_agent_node(state: TriSevaState) -> dict:
         """
         print(f"    [Health Agent Tool] Querying local KB: '{query}'")
         orig_q = state.get("original_query")
-        chunks = retrieve(query, domain="health", n_results=5, native_query=orig_q)
+        chunks = retrieve(query, domain="health", n_results=7, native_query=orig_q)
         
         context = ""
         if chunks:

@@ -65,8 +65,9 @@ def preprocess_image_bytes(image_bytes: bytes) -> bytes:
     Preprocesses document/prescription image bytes to optimize VLM / OCR readability:
     1. Correct EXIF orientation.
     2. Convert RGBA/Palette images to RGB.
-    3. Apply contrast & sharpness enhancement for faint cursive handwriting & medical prescriptions.
-    4. Intelligently resize oversized images (> 2048px) maintaining aspect ratio.
+    3. Apply autocontrast to normalize shadowed/dark document photos.
+    4. Apply contrast & sharpness enhancement for faint cursive handwriting & medical prescriptions.
+    5. Intelligently resize oversized images (> 2048px) maintaining aspect ratio.
     """
     try:
         image = Image.open(io.BytesIO(image_bytes))
@@ -78,14 +79,17 @@ def preprocess_image_bytes(image_bytes: bytes) -> bytes:
         if image.mode not in ("RGB", "L"):
             image = image.convert("RGB")
 
-        # 3. Enhance Contrast & Sharpness for better handwriting visibility
+        # 3. Autocontrast for dark/shadowed phone photos
+        image = ImageOps.autocontrast(image, cutoff=1)
+
+        # 4. Enhance Contrast & Sharpness for better handwriting visibility
         enhancer_contrast = ImageEnhance.Contrast(image)
-        image = enhancer_contrast.enhance(1.3)
+        image = enhancer_contrast.enhance(1.4)
 
         enhancer_sharpness = ImageEnhance.Sharpness(image)
-        image = enhancer_sharpness.enhance(1.4)
+        image = enhancer_sharpness.enhance(1.5)
 
-        # 4. Resize if oversized (max dimension 2048px)
+        # 5. Resize if oversized (max dimension 2048px)
         max_dim = 2048
         width, height = image.size
         if width > max_dim or height > max_dim:
@@ -98,7 +102,7 @@ def preprocess_image_bytes(image_bytes: bytes) -> bytes:
             image = image.resize((new_w, new_h), Image.Resampling.LANCZOS)
 
         output_io = io.BytesIO()
-        image.save(output_io, format="JPEG", quality=92)
+        image.save(output_io, format="JPEG", quality=95)
         return output_io.getvalue()
     except Exception as e:
         print(f"multimodal: Image preprocessing warning (using raw bytes): {e}")
@@ -124,11 +128,50 @@ def extract_text_from_pdf(pdf_path: str) -> str:
 
 
 # ── VLM OCR Provider Engines ────────────────────────────────────────────────────
-def extract_text_via_local_ollama(image_bytes: bytes) -> str:
-    """Uses a local Ollama server running Llama-3.2-Vision/Qwen2.5-VL to perform OCR/extraction."""
+def extract_text_via_qwen_vl(image_bytes: bytes) -> str:
+    """Uses Qwen2.5-VL (via local Ollama or vLLM endpoint) for high-accuracy document & medical handwriting OCR."""
     import base64
     ollama_url = os.getenv("OLLAMA_API_BASE", "http://localhost:11434/api/generate")
-    model_name = os.getenv("OLLAMA_VLM_MODEL", "llama3.2-vision")
+    models_to_try = [
+        os.getenv("QWEN_VLM_MODEL", "llama3.2-vision"),
+        "llama3.2-vision",
+        "llava",
+        "qwen2.5-vl",
+        "qwen2-vl"
+    ]
+    
+    image_data = base64.b64encode(image_bytes).decode("utf-8")
+    
+    for model_name in models_to_try:
+        try:
+            print(f"Calling Qwen2.5-VL model '{model_name}' (Primary VLM OCR) for text extraction...")
+            payload = {
+                "model": model_name,
+                "prompt": EXTRACTION_PROMPT,
+                "images": [image_data],
+                "stream": False,
+                "options": {
+                    "temperature": 0
+                }
+            }
+            response = requests.post(ollama_url, json=payload, timeout=60)
+            if response.status_code == 200:
+                result = response.json()
+                ans = result.get("response", "")
+                if ans and len(ans.strip()) > 15 and "unable to read" not in ans.lower():
+                    print(f"multimodal: Successfully extracted text using Qwen2.5-VL model '{model_name}'.")
+                    return ans
+        except Exception as e:
+            print(f"multimodal: Qwen2.5-VL model '{model_name}' attempt failed: {e}")
+            
+    return ""
+
+
+def extract_text_via_local_ollama(image_bytes: bytes) -> str:
+    """Uses local VLM (Qwen2.5-VL / InternVL2-8B) via Ollama/local endpoint for OCR/extraction."""
+    import base64
+    ollama_url = os.getenv("OLLAMA_API_BASE", "http://localhost:11434/api/generate")
+    model_name = os.getenv("OLLAMA_VLM_MODEL", os.getenv("QWEN_VLM_MODEL", "qwen2.5-vl"))
 
     print(f"Calling local Ollama model '{model_name}' (Local OCR) for text extraction...")
     try:
@@ -156,35 +199,39 @@ def extract_text_via_local_ollama(image_bytes: bytes) -> str:
 
 
 def extract_text_via_gemini_flash(image_bytes: bytes) -> str:
-    """Uses Gemini 2.5 Flash to perform high-accuracy OCR/prescription reading on image bytes."""
+    """Uses Gemini Vision (2.0 Flash / 1.5 Flash) to perform high-accuracy OCR/prescription reading on image bytes."""
     import base64
     google_key = os.getenv("GOOGLE_API_KEY")
     if not google_key:
         print("GOOGLE_API_KEY is not configured. Skipping Gemini.")
         return ""
 
-    print("Calling Gemini 2.5 Flash (Primary Cloud OCR) for text extraction...")
-    try:
-        image_data = base64.b64encode(image_bytes).decode("utf-8")
-        llm = ChatGoogleGenerativeAI(
-            model="gemini-2.5-flash",
-            google_api_key=google_key,
-            temperature=0
-        )
-        message = HumanMessage(
-            content=[
-                {"type": "text", "text": EXTRACTION_PROMPT},
-                {
-                    "type": "image_url",
-                    "image_url": {"url": f"data:image/jpeg;base64,{image_data}"},
-                },
-            ]
-        )
-        response = llm.invoke([message])
-        if response.content and len(response.content.strip()) > 15:
-            return response.content
-    except Exception as e:
-        print(f"Gemini OCR extraction failed: {e}")
+    image_data = base64.b64encode(image_bytes).decode("utf-8")
+    models_to_try = ["gemini-2.0-flash", "gemini-1.5-flash", "gemini-1.5-pro", "gemini-2.5-flash"]
+    
+    for model_name in models_to_try:
+        try:
+            print(f"Calling Gemini model '{model_name}' (Primary Cloud OCR) for text extraction...")
+            llm = ChatGoogleGenerativeAI(
+                model=model_name,
+                google_api_key=google_key,
+                temperature=0
+            )
+            message = HumanMessage(
+                content=[
+                    {"type": "text", "text": EXTRACTION_PROMPT},
+                    {
+                        "type": "image_url",
+                        "image_url": {"url": f"data:image/jpeg;base64,{image_data}"},
+                    },
+                ]
+            )
+            response = llm.invoke([message])
+            if response.content and len(response.content.strip()) > 15:
+                print(f"multimodal: Successfully extracted text using Gemini model '{model_name}'.")
+                return response.content
+        except Exception as e:
+            print(f"multimodal: Gemini model '{model_name}' attempt failed: {e}")
     return ""
 
 
@@ -289,8 +336,8 @@ def image_processing_node(state: TriSevaState) -> dict:
                     processed_page_bytes = preprocess_image_bytes(page_bytes)
                     print(f"multimodal: Running OCR on page {page_num + 1}...")
 
-                    page_text = ""
-                    if use_local_vlm:
+                    page_text = extract_text_via_qwen_vl(processed_page_bytes)
+                    if not page_text and use_local_vlm:
                         page_text = extract_text_via_local_ollama(processed_page_bytes)
                     if not page_text:
                         page_text = extract_text_via_gemini_flash(processed_page_bytes)
@@ -309,17 +356,20 @@ def image_processing_node(state: TriSevaState) -> dict:
             # Run image preprocessing (EXIF transpose, contrast/sharpness enhancement, intelligent resize)
             processed_bytes = preprocess_image_bytes(raw_bytes)
 
-            # 1. Try local VLM first if enabled
-            if use_local_vlm:
+            # 1. Primary VLM OCR: Qwen2.5-VL (Local Ollama / vLLM / API)
+            extracted_text = extract_text_via_qwen_vl(processed_bytes)
+
+            # 2. Local Ollama alternative fallback if enabled
+            if not extracted_text and use_local_vlm:
                 extracted_text = extract_text_via_local_ollama(processed_bytes)
 
-            # 2. Primary Cloud OCR: Gemini 2.5 Flash
+            # 3. Secondary Cloud VLM: Gemini 2.0 Flash / 1.5 Flash
             if not extracted_text:
                 extracted_text = extract_text_via_gemini_flash(processed_bytes)
 
-            # 3. Fallback Cloud OCR: OpenAI gpt-4o-mini
+            # 4. Fallback Cloud VLM: OpenAI gpt-4o-mini
             if not extracted_text:
-                print("multimodal: Gemini OCR failed/skipped. Using OpenAI OCR fallback...")
+                print("multimodal: Cloud VLM fallback. Using OpenAI OCR fallback...")
                 extracted_text = extract_text_via_openai_mini(processed_bytes)
 
         except Exception as e:

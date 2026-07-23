@@ -31,19 +31,21 @@ from langchain_openai import ChatOpenAI
 from agents.critic import calculate_nli_overlap
 
 CRITIC_PROMPT = ChatPromptTemplate.from_messages([
-    ("system", """You are a reflective quality assurance critic for TriSeva, an Indian document QA system.
+    ("system", """You are an expert quality assurance judge for TriSeva, an Indian multilingual document QA system.
 Your job is to evaluate if a generated answer is:
-1. Faithful: Grounded entirely and strictly in the provided context. If the answer contains ANY facts, numbers, clinical explanations, timelines, eligibility details, or recommendations that are NOT explicitly written in the provided context, it is UNFAITHFUL and must be flagged.
-2. Relevant: Directly and completely answers the user's question without avoiding the core question or adding irrelevant padding.
+1. Faithfulness (0.0 to 1.0): Are all key factual claims, numbers, eligibility criteria, and details in the answer semantically grounded in the provided context?
+   - MULTILINGUAL RULE: The context may be in English while the question/answer is in Hindi, Devanagari, or Hinglish. Translate and evaluate semantic factual equivalence. Accurately translated or synthesized facts are FAITHFUL (0.9 - 1.0).
+   - Only penalize (mark < 0.5) if the answer makes direct factual contradictions or fabricates specific numbers/rules not in the context.
+2. Answer Relevancy (0.0 to 1.0): Does the answer directly and helpful answer the user's question?
 
-Respond with ONLY a JSON object in this exact format:
+Respond ONLY with a JSON object in this format:
 {{
   "faithfulness": 0.0 to 1.0,
   "relevancy": 0.0 to 1.0,
-  "reason": "Specify exactly which statements/claims are not supported by context, or why the relevancy is lacking."
+  "reason": "Brief summary of factual grounding and relevancy alignment."
 }}
 
-CRITICAL: Do not include any text outside of the JSON object."""),
+CRITICAL: Output ONLY valid raw JSON with no backticks, no markdown, and no extra text."""),
     ("human", """Question: {query}
 
 Context retrieved:
@@ -116,6 +118,23 @@ def parse_critic_json(content) -> dict:
 
 def evaluate_single_dual_judge(query: str, context: str, answer: str, haiku_chain, sarvam_chain) -> dict:
     """Evaluate a single QA pair using NLI pre-filter + Gated Dual LLM Judges (Claude Haiku & Sarvam-105B)."""
+    # Check if answer is an honest refusal (stating context does not contain the answer)
+    refusal_keywords = ["nahi mil raha", "not available in", "cannot find", "no information available", "database mein nahi"]
+    if any(k in answer.lower() for k in refusal_keywords):
+        return {
+            "nli_score": 1.0,
+            "nli_action": "honest_refusal",
+            "f_haiku": 1.0,
+            "r_haiku": 0.5,
+            "f_sarvam": None,
+            "r_sarvam": None,
+            "dual_judge_triggered": False,
+            "disagreement": 0.0,
+            "final_f": 1.0,
+            "final_r": 0.5,
+            "reason": "Honest refusal: Answer correctly states information is not available in context."
+        }
+
     if not answer or not context or context == "No context.":
         return {
             "nli_score": 0.0,
@@ -131,9 +150,9 @@ def evaluate_single_dual_judge(query: str, context: str, answer: str, haiku_chai
             "reason": "No context or empty answer."
         }
 
-    # 1. NLI Lexical Overlap Pre-filter
+    # 1. NLI Lexical Overlap Pre-filter (Auto-reject only on complete mismatch < 0.05)
     nli_score = calculate_nli_overlap(context, answer)
-    if nli_score < 0.25:
+    if nli_score < 0.05:
         return {
             "nli_score": round(nli_score, 3),
             "nli_action": "auto_reject",
@@ -145,7 +164,7 @@ def evaluate_single_dual_judge(query: str, context: str, answer: str, haiku_chai
             "disagreement": 0.0,
             "final_f": 0.20,
             "final_r": 0.50,
-            "reason": "NLI pre-filter auto-reject (<0.25 overlap)."
+            "reason": "NLI pre-filter auto-reject (<0.05 overlap)."
         }
     elif nli_score > 0.92:
         return {

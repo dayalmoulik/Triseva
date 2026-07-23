@@ -175,8 +175,6 @@ def ask(query: str, session_id: str = "default", image_path: str = None, domain_
 
     answer_text = r.get("final_answer") or r.get("draft_answer") or ""
     disclaimer_text = r.get("domain_disclaimer")
-    if disclaimer_text:
-        answer_text += f"\n\n{disclaimer_text}"
 
     return {
         "answer":          answer_text,

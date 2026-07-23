@@ -130,7 +130,7 @@ def legal_agent_node(state: TriSevaState) -> dict:
         """
         print(f"    [Legal Agent Tool] Querying local KB: '{query}'")
         orig_q = state.get("original_query")
-        chunks = retrieve(query, domain="legal", n_results=5, native_query=orig_q)
+        chunks = retrieve(query, domain="legal", n_results=7, native_query=orig_q)
         
         context = ""
         struct_context = check_structured_schemes(query)
