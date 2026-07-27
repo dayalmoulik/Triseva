@@ -115,7 +115,21 @@ def legal_agent_node(state: TriSevaState) -> dict:
                 for cat in pa.get("categories", []):
                     matched_context += f"  * {cat.get('name')}: Income up to {cat.get('income_limit_lakhs')} lakhs, Subsidy {cat.get('subsidy_rate')}%, Max loan {cat.get('loan_limit_lakhs')} lakhs\n"
                 matched_context += "\n"
-                
+
+            # Check Nagaland & Article 371A
+            if "nagaland" in query_lower or "371a" in query_lower or "naga" in query_lower:
+                ng = schemes.get("nagaland_special_provisions", {})
+                matched_context += f"[STRUCTURED SCHEME RULES - {ng.get('name')}]\n"
+                matched_context += f"- Benefit: {ng.get('benefit')}\n"
+                matched_context += f"- Key Provisions: {ng.get('key_provisions')}\n"
+                matched_context += f"- Land Transfer Rule: {ng.get('land_transfer_rule')}\n\n"
+
+                nf = schemes.get("nagaland_focus_scheme", {})
+                matched_context += f"[STRUCTURED SCHEME RULES - {nf.get('name')}]\n"
+                matched_context += f"- Benefit: {nf.get('benefit')}\n"
+                matched_context += f"- Eligibility: {nf.get('eligibility_rules')}\n"
+                matched_context += f"- Components: {nf.get('key_components')}\n\n"
+
             return matched_context
         except Exception as e_schema:
             print(f"Error checking structured schemes: {e_schema}")

@@ -63,5 +63,17 @@
         "loan_limit_lakhs": 12.0
       }
     ]
+  },
+  "nagaland_special_provisions": {
+    "name": "Article 371A & Nagaland Land Rights",
+    "benefit": "Special constitutional protection under Article 371A of the Constitution of India.",
+    "key_provisions": "No Act of Parliament applies to Nagaland regarding: (1) Religious or social practices of Nagas, (2) Naga customary law and procedure, (3) Administration of civil and criminal justice according to Naga customary law, and (4) Ownership and transfer of land and its resources, unless the Legislative Assembly of Nagaland by resolution so decides.",
+    "land_transfer_rule": "Land in Nagaland cannot be transferred to non-indigenous inhabitants/non-tribals without state permission under Naga customary law."
+  },
+  "nagaland_focus_scheme": {
+    "name": "FOCUS Nagaland (Fostering Climate Resilient Agricultural Farming Systems)",
+    "benefit": "Financial assistance, sustainable Jhum cultivation support, and market value chain development for farmers in Nagaland.",
+    "eligibility_rules": "Rural farming households in designated districts of Nagaland engaged in settled or Jhum agriculture.",
+    "key_components": "Improved soil conservation, high-yielding crop seeds, community forestry, and value chain infrastructure."
   }
 }
