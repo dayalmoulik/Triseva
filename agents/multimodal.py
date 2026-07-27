@@ -128,6 +128,36 @@ def extract_text_from_pdf(pdf_path: str) -> str:
 
 
 # ── VLM OCR Provider Engines ────────────────────────────────────────────────────
+def extract_via_azure_document_intelligence(image_bytes: bytes) -> str:
+    """Uses Azure AI Document Intelligence (Layout Model) for high-precision table grid & handwriting OCR."""
+    endpoint = os.getenv("AZURE_DOC_INTEL_ENDPOINT")
+    key = os.getenv("AZURE_DOC_INTEL_KEY")
+
+    if not endpoint or not key:
+        print("AZURE_DOC_INTEL credentials not configured. Skipping Azure.")
+        return ""
+
+    print("Calling Azure Document Intelligence (Layout Engine) for text extraction...")
+    try:
+        from azure.ai.documentintelligence import DocumentIntelligenceClient
+        from azure.core.credentials import AzureKeyCredential
+
+        client = DocumentIntelligenceClient(endpoint=endpoint, credential=AzureKeyCredential(key))
+        poller = client.begin_analyze_document(
+            model_id="prebuilt-layout",
+            body=image_bytes,
+            output_content_format="markdown",
+        )
+        result = poller.result()
+        if result.content and len(result.content.strip()) > 15:
+            print("multimodal: Successfully extracted text via Azure Document AI.")
+            return result.content
+    except Exception as e:
+        print(f"Azure Document Intelligence extraction failed: {e}")
+
+    return ""
+
+
 def extract_text_via_qwen_vl(image_bytes: bytes) -> str:
     """Uses Qwen2.5-VL (via local Ollama or vLLM endpoint) for high-accuracy document & medical handwriting OCR."""
     import base64
@@ -356,16 +386,16 @@ def image_processing_node(state: TriSevaState) -> dict:
             # Run image preprocessing (EXIF transpose, contrast/sharpness enhancement, intelligent resize)
             processed_bytes = preprocess_image_bytes(raw_bytes)
 
-            # 1. Primary VLM OCR: Qwen2.5-VL (Local Ollama / vLLM / API)
-            extracted_text = extract_text_via_qwen_vl(processed_bytes)
+            # 1. Primary Layout Engine: Azure AI Document Intelligence (Layout Model)
+            extracted_text = extract_via_azure_document_intelligence(processed_bytes)
 
-            # 2. Local Ollama alternative fallback if enabled
-            if not extracted_text and use_local_vlm:
-                extracted_text = extract_text_via_local_ollama(processed_bytes)
-
-            # 3. Secondary Cloud VLM: Gemini 2.0 Flash / 1.5 Flash
+            # 2. Secondary Cloud VLM: Gemini 2.0 Flash / 1.5 Flash
             if not extracted_text:
                 extracted_text = extract_text_via_gemini_flash(processed_bytes)
+
+            # 3. Local On-Device VLM: Qwen2.5-VL / Llama-3.2-Vision (Ollama)
+            if not extracted_text:
+                extracted_text = extract_text_via_qwen_vl(processed_bytes)
 
             # 4. Fallback Cloud VLM: OpenAI gpt-4o-mini
             if not extracted_text:
