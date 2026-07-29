@@ -173,23 +173,35 @@ DOMAIN_META = {
 
 # ── Local Document to Official Web Portal Mapping ───────────────────────────
 LOCAL_TO_WEB_MAP = {
+    # Healthcare
+    "medline": "https://medlineplus.gov",
+    "health": "https://www.mohfw.gov.in",
+    "nih": "https://www.ncbi.nlm.nih.gov",
+    "who": "https://www.who.int",
+    # Legal & Government
     "bnss": "https://www.mha.gov.in",
     "bns": "https://www.mha.gov.in",
     "bsa": "https://www.mha.gov.in",
     "dpdp": "https://www.meity.gov.in",
     "rti": "https://rti.gov.in",
     "nfsa": "https://dfpd.gov.in",
+    "pmkisan": "https://pmkisan.gov.in",
+    "pm-kisan": "https://pmkisan.gov.in",
+    "ayushman": "https://pmjay.gov.in",
+    "legal": "https://www.india.gov.in",
+    # Agriculture
+    "annual_report": "https://agricoop.nic.in",
+    "nfsm": "https://nfsm.gov.in",
     "pm-rkvy": "https://rkvy.nic.in",
     "pdmc": "https://pmksy.gov.in",
-    "nfsm": "https://nfsm.gov.in",
     "midh": "https://midh.gov.in",
     "atma": "https://agricoop.nic.in",
     "fpo": "https://sfacindia.com",
     "aif": "https://agriinfra.dac.gov.in",
     "soil": "https://soilhealth.dac.gov.in",
     "pm-aasha": "https://pmaasha.nic.in",
-    "medline": "https://medlineplus.gov",
-    "health": "https://www.mohfw.gov.in",
+    "agriculture": "https://agricoop.nic.in",
+    "agri": "https://agricoop.nic.in"
 }
 
 def resolve_web_url(source_name: str) -> str:
@@ -198,16 +210,21 @@ def resolve_web_url(source_name: str) -> str:
         return None
     source_lower = source_name.strip().lower()
     
-    # 1. If already a web URL (e.g., from web search tool)
     if source_lower.startswith("http://") or source_lower.startswith("https://"):
         return source_name
         
-    # 2. Map local vector DB doc prefixes to official portal web URLs
     for prefix, web_url in LOCAL_TO_WEB_MAP.items():
         if prefix in source_lower:
             return web_url
             
-    # 3. Filter out unmapped local data files
+    if any(ext in source_lower for ext in [".pdf", ".png", ".jpg", ".txt"]):
+        if "health" in source_lower:
+            return "https://www.mohfw.gov.in"
+        elif "legal" in source_lower:
+            return "https://www.india.gov.in"
+        elif "agri" in source_lower:
+            return "https://agricoop.nic.in"
+            
     return None
 
 
