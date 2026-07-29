@@ -237,10 +237,9 @@ div[class*="logo"] img {
     height: 38px !important;
     max-height: 38px !important;
     width: auto !important;
-    mix-blend-mode: multiply !important;
-    border-radius: 50% !important;
+    border-radius: 12px !important;
     filter: drop-shadow(0 1px 4px rgba(0, 0, 0, 0.03)) !important;
-    opacity: 0.95 !important;
+    opacity: 0.98 !important;
 }
 
 /* Enlarge message avatars */
