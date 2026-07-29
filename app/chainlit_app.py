@@ -35,6 +35,16 @@ load_dotenv()
 import chainlit as cl
 from chainlit.data.sql_alchemy import SQLAlchemyDataLayer
 from main import ask
+from fastapi.staticfiles import StaticFiles
+
+# ── Mount Static Files (/public) on FastAPI Server ────────────────────────────
+try:
+    from chainlit.server import app as chainlit_fastapi_app
+    public_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "public"))
+    if os.path.exists(public_dir):
+        chainlit_fastapi_app.mount("/public", StaticFiles(directory=public_dir), name="public_custom_files")
+except Exception as e:
+    pass
 
 import sqlite3
 
