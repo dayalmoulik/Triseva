@@ -213,6 +213,10 @@ def retrieve(query: str, domain: str, n_results: int = 7, native_query: str = No
     if collection.count() == 0:
         print(f"  [RAG] Collection 'triseva_{domain}' is empty. Auto-building starter knowledge base...")
         try:
+            import sys
+            root_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+            if root_dir not in sys.path:
+                sys.path.insert(0, root_dir)
             from knowledge_base.build_kb import build_knowledge_base
             build_knowledge_base()
             collection = client.get_or_create_collection(

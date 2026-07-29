@@ -197,17 +197,8 @@ def critic_node(state: TriSevaState) -> dict:
     telemetry["nli_prefilter_score"] = nli_score
 
     if nli_score < 0.05:
-        print(f"  [Critic NLI Pre-filter] High contradiction detected (overlap: {nli_score:.2f}). Auto-rejecting.")
-        telemetry["nli_prefilter_action"] = "auto_reject"
-        telemetry["dual_judge_triggered"] = False
-        telemetry["judge_disagreement"] = 0.0
-        return {
-            "faithfulness_score": 0.20,
-            "relevancy_score": 0.50,
-            "final_answer": "",
-            "telemetry": telemetry,
-            "critic_feedback": "Lexical NLI pre-filter flagged extreme factual mismatch between context and response.",
-        }
+        print(f"  [Critic NLI Pre-filter] Low lexical overlap detected (overlap: {nli_score:.2f}). Escalating to Dual-Judge LLM evaluation...")
+        telemetry["nli_prefilter_action"] = "escalate_to_judge"
     elif nli_score > 0.92:
         print(f"  [Critic NLI Pre-filter] High entailment detected (overlap: {nli_score:.2f}). Auto-approving.")
         telemetry["nli_prefilter_action"] = "auto_approve"
