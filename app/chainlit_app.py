@@ -315,24 +315,3 @@ async def on_message(message: cl.Message):
     # Send main answer
     msg = cl.Message(content=content)
     await msg.send()
-
-
-
-    # ── Sources as separate message (Web Links Only) ─────────────────────────
-    if sources:
-        web_urls = set()
-        for s in sources:
-            name = s.get("source")
-            url = resolve_web_url(name)
-            if url:
-                web_urls.add(url)
-
-        if web_urls:
-            src_content = "### 🔗 Reference Web Links\n\n"
-            for url in sorted(web_urls):
-                src_content += f"- [{url}]({url})\n"
-
-            await cl.Message(
-                content=src_content,
-                parent_id=msg.id,
-            ).send()
