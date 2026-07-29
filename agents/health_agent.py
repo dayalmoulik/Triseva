@@ -7,6 +7,11 @@ import time
 from dotenv import load_dotenv
 load_dotenv()
 
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding='utf-8', errors='ignore')
+if hasattr(sys.stderr, "reconfigure"):
+    sys.stderr.reconfigure(encoding='utf-8', errors='ignore')
+
 from langchain_core.messages import HumanMessage, AIMessage, SystemMessage
 from langchain_core.tools import tool
 from langgraph.prebuilt import create_react_agent
@@ -89,7 +94,13 @@ def health_agent_node(state: TriSevaState) -> dict:
         print(f"    [Health Agent Tool] Searching web: '{query}'")
         telemetry["is_fallback_retrieval"] = True
         res = web_search_tool.invoke(query)
-        retrieved_sources_list.append({"source": "Web Search", "score": 1.0})
+        if "http://" in res or "https://" in res:
+            import re
+            urls = re.findall(r"https?://[^\s\)\"\']+", res)
+            for u in urls:
+                retrieved_sources_list.append({"source": u, "score": 1.0})
+        else:
+            retrieved_sources_list.append({"source": "Web Search", "score": 1.0})
         return res
 
     try:

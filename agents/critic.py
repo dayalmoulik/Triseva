@@ -2,8 +2,16 @@ import warnings
 warnings.filterwarnings("ignore")
 
 import os
+import sys
+import time
+import json
 from dotenv import load_dotenv
 load_dotenv()
+
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding='utf-8', errors='ignore')
+if hasattr(sys.stderr, "reconfigure"):
+    sys.stderr.reconfigure(encoding='utf-8', errors='ignore')
 
 from agents.llm_factory import get_llm
 from langchain_core.prompts import ChatPromptTemplate

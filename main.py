@@ -173,7 +173,10 @@ def ask(query: str, session_id: str = "default", image_path: str = None, domain_
     telemetry["latency"] = round(latency, 2)
     telemetry["retries"] = r.get("retry_count", 0)
 
+    sources = r.get("sources", [])
     answer_text = r.get("final_answer") or r.get("draft_answer") or ""
+    from agents.utils import append_source_links
+    answer_text = append_source_links(answer_text, sources)
     disclaimer_text = r.get("domain_disclaimer")
 
     return {
@@ -182,7 +185,7 @@ def ask(query: str, session_id: str = "default", image_path: str = None, domain_
         "score":           r.get("faithfulness_score"),
         "disclaimer":      disclaimer_text,
         "quiz":            r.get("quiz"),
-        "sources":         r.get("sources", []),
+        "sources":         sources,
         "retrieved_chunks": r.get("retrieved_chunks", []),
         "telemetry":       telemetry,
         "run_id":          handler.run_id,
