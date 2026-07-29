@@ -153,6 +153,8 @@ custom_meta_url = "http://localhost:8000"
 custom_meta_image_url = "/public/logo.png"
 
 # Load assistant logo directly from URL.
+logo_light = "/public/logo.png"
+logo_dark = "/public/logo.png"
 logo_file_url = "/public/logo.png"
 
 # Load assistant avatar image directly from URL.
