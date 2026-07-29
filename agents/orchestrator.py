@@ -122,6 +122,29 @@ def orchestrator_node(state: TriSevaState) -> dict:
         "is_fallback_retrieval": False,
     }
 
+    query_lower = query.strip().lower()
+
+    # High-precision deterministic domain overrides for unambiguous domain markers
+    if any(k in query_lower for k in ["ayushman", "pm-jay", "pmjay", "haemoglobin", "hemoglobin", "homeoglobin", "hospital", "doctor", "clinical", "medline"]):
+        print("  [Orchestrator] Deterministic domain match -> HEALTH (confidence: 1.0)")
+        telemetry["routing_hops"].append("health")
+        return {
+            "domain": "health",
+            "routing_decision": "health",
+            "retry_count": retry_count,
+            "telemetry": telemetry,
+        }
+
+    if any(k in query_lower for k in ["pm kisan", "pm-kisan", "mgnrega", "mnrega", "nrega", "pmay", "rti", "dpdp", "bns", "bnss", "bsa"]):
+        print("  [Orchestrator] Deterministic domain match -> LEGAL (confidence: 1.0)")
+        telemetry["routing_hops"].append("legal")
+        return {
+            "domain": "legal",
+            "routing_decision": "legal",
+            "retry_count": retry_count,
+            "telemetry": telemetry,
+        }
+
     # 1. User Domain Override check
     override = state.get("domain_override")
     if override in ["health", "legal", "agriculture"]:
