@@ -52,22 +52,27 @@ def _save_cache():
 
 def is_hindi_or_hinglish(text: str) -> bool:
     """Detect if the text is Hindi (contains Devanagari) or Hinglish (code-mixed)."""
+    if not text or not text.strip():
+        return False
+        
+    # 1. Direct Devanagari script check
     if re.search(r"[\u0900-\u097f]", text):
         return True
         
+    # 2. Unambiguous Hinglish keywords (excluding common English words like 'is', 'to', 'me', 'he', 'the', 'crop')
     hinglish_keywords = {
-        "kya", "hai", "hain", "ko", "se", "ka", "ki", "ke", "me", "mein", 
-        "par", "bhi", "aur", "ya", "tha", "thi", "the", "hu", "hoon", "he",
-        "pe", "ne", "kr", "karo", "karna", "rha", "raha", "rhi", "rahli",
-        "ga", "ge", "gi", "hi", "toh", "to", "jo", "is", "us", "ab", "kab",
-        "jab", "tab", "bhai", "yaar", "crop", "bimar", "bimari", "ilaaj",
-        "dawa", "khet", "kheti", "mitti"
+        "kya", "hai", "hain", "ko", "se", "ka", "ki", "ke", "mein", 
+        "par", "bhi", "aur", "ya", "tha", "thi", "theh", "hoon",
+        "karo", "karna", "raha", "rahi", "rahe", "ga", "ge", "gi", "toh", 
+        "kab", "jab", "tab", "bhai", "yaar", "bimar", "bimari", "ilaaj",
+        "dawa", "khet", "kheti", "mitti", "chhoot", "fasal", "pila", "upay",
+        "kisaan", "kisaano", "jameen", "jhum"
     }
     
     words = re.findall(r"\b\w+\b", text.lower())
     match_count = sum(1 for w in words if w in hinglish_keywords)
     
-    if len(words) > 0 and (match_count >= 2 or (match_count / len(words)) >= 0.15):
+    if len(words) > 0 and (match_count >= 2 or (match_count / len(words)) >= 0.25):
         return True
         
     return False
