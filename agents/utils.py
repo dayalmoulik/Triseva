@@ -284,8 +284,8 @@ def append_source_links(answer_text: str, sources: list) -> str:
 
     if resolved_links:
         link_items = [f"- 📄 [{title}]({url})" for title, url in resolved_links]
-        source_block = "\n\n---\n### 🔗 Reference Sources & Official Links:\n" + "\n".join(link_items)
-        if "### 🔗 Reference Sources" not in clean_ans:
+        source_block = "\n\n---\n##### 🔗 Reference Sources & Official Links:\n" + "\n".join(link_items)
+        if "Reference Sources & Official Links" not in clean_ans:
             return clean_ans + source_block
 
     return clean_ans
