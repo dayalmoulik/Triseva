@@ -72,6 +72,111 @@ def get_document_context(state: dict, max_chars: int = 50000) -> Optional[str]:
         return image_text[:max_chars]
     return None
 
+
+def is_answer_not_found(answer_text: str) -> bool:
+    """Check if the answer indicates that information was not found or failed."""
+    if not answer_text or not answer_text.strip():
+        return True
+
+    answer_lower = answer_text.lower().strip()
+
+    not_found_phrases = [
+        "cannot find the answer",
+        "could not find",
+        "cannot find",
+        "no relevant context",
+        "no relevant information",
+        "no information available",
+        "not found in the available",
+        "unable to find",
+        "unable to locate",
+        "request timed out",
+        "encountered an error",
+        "no answer generated",
+        "no relevant context found",
+    ]
+
+    for phrase in not_found_phrases:
+        if phrase in answer_lower:
+            return True
+
+    return False
+
+
+def filter_representative_sources(answer_text: str, sources: list, retrieved_chunks: list = None) -> list:
+    """
+    Ensures retrieved sources are non-empty, representative, and relevant to the generated answer.
+    Filters out system fallbacks, low-relevance noise, and sources not represented in the answer.
+    Returns an empty list if the answer is a fallback 'not found' response.
+    """
+    if not sources or is_answer_not_found(answer_text):
+        return []
+
+    answer_lower = answer_text.lower()
+    representative_sources = []
+    seen_names = set()
+
+    for s in sources:
+        if not s:
+            continue
+
+        source_name = ""
+        score = 1.0
+
+        if isinstance(s, dict):
+            source_name = s.get("source", "").strip()
+            score = s.get("score", 1.0)
+        elif isinstance(s, str):
+            source_name = s.strip()
+
+        if not source_name or source_name.lower() in ["system", "no context.", "no context", "unknown", "no web results found."]:
+            continue
+
+        if source_name in seen_names:
+            continue
+
+        # 1. Web URLs are always valid web references
+        if source_name.startswith("http://") or source_name.startswith("https://"):
+            representative_sources.append(s if isinstance(s, dict) else {"source": source_name, "score": score})
+            seen_names.add(source_name)
+            continue
+
+        # 2. Document / PDF Sources: Check if filename/basename or key terms overlap with answer_text
+        import os
+        base_name = os.path.basename(source_name).lower()
+        clean_base = base_name.replace(".pdf", "").replace(".txt", "").replace(".png", "").replace(".jpg", "").replace("_", " ").replace("-", " ")
+
+        # Extract key words (>3 chars) from the clean base name
+        key_words = [w for w in clean_base.split() if len(w) > 3 and w not in ["data", "raw", "pdfs", "health", "legal", "agriculture", "report"]]
+
+        is_relevant = False
+        if not key_words:
+            is_relevant = True
+        else:
+            for kw in key_words:
+                if kw in answer_lower:
+                    is_relevant = True
+                    break
+
+        if not is_relevant and score > 0.5:
+            is_relevant = True
+
+        if is_relevant:
+            representative_sources.append(s if isinstance(s, dict) else {"source": source_name, "score": score})
+            seen_names.add(source_name)
+
+    # Fallback to top sources if no specific key words matched but valid sources exist
+    if not representative_sources and sources:
+        for s in sources:
+            name = s.get("source") if isinstance(s, dict) else str(s)
+            if name and name.lower() not in ["system", "no context.", "no context", "no web results found."]:
+                representative_sources.append(s if isinstance(s, dict) else {"source": name, "score": 1.0})
+                if len(representative_sources) >= 3:
+                    break
+
+    return representative_sources
+
+
 LOCAL_TO_WEB_MAP = {
     # Healthcare
     "medline": "https://medlineplus.gov",
