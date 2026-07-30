@@ -107,9 +107,10 @@ def filter_representative_sources(answer_text: str, sources: list, retrieved_chu
     """
     Ensures retrieved sources are non-empty, representative, and relevant to the generated answer.
     Filters out system fallbacks, low-relevance noise, and sources not represented in the answer.
-    Returns an empty list if the answer is a fallback 'not found' response.
+    Returns an empty list if the answer is a fallback 'not found' response or in Hindi/Hinglish.
     """
-    if not sources or is_answer_not_found(answer_text):
+    from utils.translation_helper import is_hindi_or_hinglish
+    if not sources or is_answer_not_found(answer_text) or is_hindi_or_hinglish(answer_text):
         return []
 
     answer_lower = answer_text.lower()
@@ -234,7 +235,8 @@ def resolve_web_url(source_name: str) -> Optional[str]:
 
 def append_source_links(answer_text: str, sources: list) -> str:
     """Resolves reference URLs from sources list and appends clickable markdown links at the end of the answer."""
-    if not sources:
+    from utils.translation_helper import is_hindi_or_hinglish
+    if not sources or is_answer_not_found(answer_text) or is_hindi_or_hinglish(answer_text):
         return answer_text
         
     web_urls = set()

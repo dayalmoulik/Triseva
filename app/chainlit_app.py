@@ -280,10 +280,14 @@ async def on_message(message: cl.Message):
         telemetry  = result.get("telemetry", {})
 
         from agents.utils import is_answer_not_found
+        from utils.translation_helper import is_hindi_or_hinglish
         not_found = is_answer_not_found(answer)
-        if not_found:
+        is_hindi  = is_hindi_or_hinglish(answer) or is_hindi_or_hinglish(query)
+
+        if not_found or is_hindi:
             sources = []
-            chunks = []
+            if not_found:
+                chunks = []
 
         # Sub-step 1: Domain Routing Explanation
         async with cl.Step(name="🔍 Domain Router Step", type="tool") as s1:

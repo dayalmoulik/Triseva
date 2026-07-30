@@ -173,9 +173,19 @@ def ask(query: str, session_id: str = "default", image_path: str = None, domain_
     telemetry["latency"] = round(latency, 2)
     telemetry["retries"] = r.get("retry_count", 0)
 
-    sources = r.get("sources", [])
+    raw_sources = r.get("sources", [])
     answer_text = r.get("final_answer") or r.get("draft_answer") or ""
-    from agents.utils import append_source_links
+    orig_q = r.get("original_query", query)
+    from agents.utils import append_source_links, filter_representative_sources, is_answer_not_found
+    from utils.translation_helper import is_hindi_or_hinglish
+
+    if is_answer_not_found(answer_text) or is_hindi_or_hinglish(answer_text) or is_hindi_or_hinglish(orig_q):
+        sources = []
+        retrieved_chunks = []
+    else:
+        sources = filter_representative_sources(answer_text, raw_sources, r.get("retrieved_chunks"))
+        retrieved_chunks = r.get("retrieved_chunks", [])
+
     answer_text = append_source_links(answer_text, sources)
     disclaimer_text = r.get("domain_disclaimer")
 
