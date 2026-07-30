@@ -102,7 +102,13 @@ def orchestrator_node(state: TriSevaState) -> dict:
 
     # On retry, refine the query with critic feedback
     query = state["user_query"]
+    image_text = state.get("image_text") or ""
     retry_count = state.get("retry_count", 0)
+
+    # For classification, combine user_query with extracted document image text if available
+    classification_text = query
+    if image_text:
+        classification_text = f"{query} {image_text[:500]}"
 
     # If the critic has already evaluated an answer, this run is a retry
     if state.get("faithfulness_score") is not None:
@@ -122,10 +128,10 @@ def orchestrator_node(state: TriSevaState) -> dict:
         "is_fallback_retrieval": False,
     }
 
-    query_lower = query.strip().lower()
+    query_lower = classification_text.strip().lower()
 
     # High-precision deterministic domain overrides for unambiguous domain markers
-    if any(k in query_lower for k in ["ayushman", "pm-jay", "pmjay", "haemoglobin", "hemoglobin", "homeoglobin", "hospital", "doctor", "clinical", "medline"]):
+    if any(k in query_lower for k in ["prescription", "prescriptions", "rx", "medicine", "medication", "dosage", "tablet", "syrup", "capsule", "clinic", "doctor", "clinical", "patient", "diagnosis", "ayushman", "pm-jay", "pmjay", "haemoglobin", "hemoglobin", "homeoglobin", "hospital", "medline"]):
         print("  [Orchestrator] Deterministic domain match -> HEALTH (confidence: 1.0)")
         telemetry["routing_hops"].append("health")
         return {

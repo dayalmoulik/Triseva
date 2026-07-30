@@ -158,7 +158,7 @@ def agri_agent_node(state: TriSevaState) -> dict:
         if doc_context:
             # Direct LLM call to prevent tool-binding and avoid 403/Forbidden issues on model endpoints
             prompt = f"""You are TriSeva's Agriculture Assistant for India.
-Analyze the provided document context and answer the user's query.
+Analyze the provided document context (e.g., Soil Health Card, crop advisory, or agricultural receipt) and fulfill the user's request.
 
 [Document Context]
 {doc_context}
@@ -167,12 +167,13 @@ User Query: {state['user_query']}
 
 Guidelines:
 - Ground your answer strictly in the provided [Document Context].
-- CRITICAL PARAMETRIC GUARDRAIL: You are strictly forbidden from answering using your own pre-trained external knowledge. If the provided [Document Context] does not contain the specific facts needed to answer the query, you MUST return a JSON object where "factual_response" is exactly "I cannot find the answer to this in the available database." and "caution_note" contains your standard disclaimer. Do not extrapolate or guess.
+- If the user asks to summarize or explain the document (e.g. "summarize", "explain this", "summarize soil health card"), provide a clear, comprehensive summary of all key values (NPK, pH, electrical conductivity), crop recommendations, and advisories present in the document.
 - Avoid unsafe chemical advice; recommend label and local agriculture officer guidance.
+- CRITICAL PARAMETRIC GUARDRAIL: If the provided [Document Context] is empty or unreadable and does not contain valid text, return a JSON object where "factual_response" is exactly "I cannot find the answer to this in the available database." and "caution_note" contains your standard disclaimer.
 
 CRITICAL FORMATTING INSTRUCTION:
 You MUST respond ONLY with a JSON object containing exactly two fields:
-1. "factual_response": The direct agricultural factual answer directly grounded in the document context. Do not include any caution or safety warning here.
+1. "factual_response": A clear, well-structured summary or direct answer grounded in the document context. Do NOT include 'Source:' or 'स्रोत:' inline citations.
 2. "caution_note": A safety note/caution note (e.g., 'Always verify schemes on official government portals and follow local agriculture officer guidance.').
 
 Do not include any text outside the JSON object."""

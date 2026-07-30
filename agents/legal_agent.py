@@ -193,7 +193,7 @@ def legal_agent_node(state: TriSevaState) -> dict:
         if doc_context:
             # Direct LLM call to prevent tool-binding and avoid 403/Forbidden issues on model endpoints
             prompt = f"""You are TriSeva's Legal and Government Schemes Assistant — an expert on Indian government welfare schemes, citizen rights, and legal aid.
-Analyze the provided document context and answer the user's query.
+Analyze the provided document context (e.g., government order, scheme application, land record, or legal document) and fulfill the user's request.
 
 [Document Context]
 {doc_context}
@@ -202,12 +202,12 @@ User Query: {state['user_query']}
 
 Guidelines:
 - Ground your answer strictly in the provided [Document Context].
-- CRITICAL PARAMETRIC GUARDRAIL: You are strictly forbidden from answering using your own pre-trained external knowledge. If the provided [Document Context] does not contain the specific facts needed to answer the query, you MUST return a JSON object where "factual_response" is exactly "I cannot find the answer to this in the available database." and "caution_note" contains your standard disclaimer. Do not extrapolate or guess.
-- Be precise about eligibility — wrong information can harm citizens.
+- If the user asks to summarize or explain the document (e.g. "summarize", "explain this", "summarize document"), provide a clear, comprehensive summary of all key terms, eligibility rules, rights, and instructions present in the document.
+- CRITICAL PARAMETRIC GUARDRAIL: If the provided [Document Context] is empty or unreadable and does not contain valid text, return a JSON object where "factual_response" is exactly "I cannot find the answer to this in the available database." and "caution_note" contains your standard disclaimer.
 
 CRITICAL FORMATTING INSTRUCTION:
 You MUST respond ONLY with a JSON object containing exactly two fields:
-1. "factual_response": The direct legal/schemes factual answer directly grounded in the document context. Do not include any caution or safety warning here.
+1. "factual_response": A clear, well-structured summary or direct answer grounded in the document context. Do NOT include 'Source:' or 'स्रोत:' inline citations.
 2. "caution_note": A safety note/disclaimer (e.g., 'This information is for guidance only. Consult a legal professional for specific advice.').
 
 Do not include any text outside the JSON object."""
