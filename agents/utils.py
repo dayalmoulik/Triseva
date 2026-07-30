@@ -186,63 +186,82 @@ def filter_representative_sources(answer_text: str, sources: list, retrieved_chu
     return representative_sources
 
 
-LOCAL_TO_WEB_MAP = {
-    # Healthcare
-    "medline": "https://medlineplus.gov",
-    "health": "https://www.mohfw.gov.in",
-    "nih": "https://www.ncbi.nlm.nih.gov",
-    "who": "https://www.who.int",
-    # Legal & Government
-    "bnss": "https://www.mha.gov.in",
-    "bns": "https://www.mha.gov.in",
-    "bsa": "https://www.mha.gov.in",
-    "dpdp": "https://www.meity.gov.in",
-    "rti": "https://rti.gov.in",
-    "nfsa": "https://dfpd.gov.in",
-    "pmkisan": "https://pmkisan.gov.in",
-    "pm-kisan": "https://pmkisan.gov.in",
-    "ayushman": "https://pmjay.gov.in",
-    "legal": "https://www.india.gov.in",
-    # Agriculture
-    "annual_report": "https://agricoop.nic.in",
-    "nfsm": "https://nfsm.gov.in",
-    "pm-rkvy": "https://rkvy.nic.in",
-    "pdmc": "https://pmksy.gov.in",
-    "midh": "https://midh.gov.in",
-    "atma": "https://agricoop.nic.in",
-    "fpo": "https://sfacindia.com",
-    "aif": "https://agriinfra.dac.gov.in",
-    "soil": "https://soilhealth.dac.gov.in",
-    "pm-aasha": "https://pmaasha.nic.in",
-    "agriculture": "https://agricoop.nic.in",
-    "agri": "https://agricoop.nic.in"
+SPECIFIC_SOURCE_MAP = {
+    # Healthcare Specific Links
+    "medline": ("MedlinePlus Official Medical Database", "https://medlineplus.gov"),
+    "health": ("Ministry of Health & Family Welfare Guidelines", "https://www.mohfw.gov.in"),
+    "nih": ("National Institutes of Health (NCBI PubMed)", "https://www.ncbi.nlm.nih.gov"),
+    "who": ("World Health Organization (WHO) Health Topics", "https://www.who.int"),
+
+    # Legal & Scheme Specific Deep Links
+    "mgnrega": ("myScheme Portal - MGNREGA Scheme Guidelines", "https://www.myscheme.gov.in/schemes/mgnrega"),
+    "nrega": ("MGNREGA Official Ministry Portal (nrega.nic.in)", "https://nrega.nic.in"),
+    "master_roll": ("MGNREGA Master Roll Operational Framework", "https://nrega.nic.in"),
+    "constitution": ("Constitution of India Official Legislative Portal", "https://lddashboard.legislative.gov.in/sites/default/files/COI...pdf"),
+    "article_371a": ("Article 371A Constitutional Provisions (Nagaland)", "https://www.india.gov.in/my-government/constitution-india"),
+    "371a": ("Article 371A Constitutional Provisions for Nagaland", "https://www.india.gov.in/my-government/constitution-india"),
+    "bns": ("Bharatiya Nyaya Sanhita (BNS Act 2023 Official PDF)", "https://www.mha.gov.in/sites/default/files/25072024_BNS_English.pdf"),
+    "bnss": ("Bharatiya Nagarik Suraksha Sanhita (BNSS Act 2023 Official PDF)", "https://www.mha.gov.in/sites/default/files/25072024_BNSS_English.pdf"),
+    "bsa": ("Bharatiya Sakshya Adhiniyam (BSA Act 2023 Official PDF)", "https://www.mha.gov.in/sites/default/files/25072024_BSA_English.pdf"),
+    "dpdp": ("Digital Personal Data Protection Act 2023 Official PDF", "https://www.meity.gov.in/writereaddata/files/Digital%20Personal%20Data%20Protection%20Act%202023.pdf"),
+    "rti": ("Right to Information Act 2005 Official Document", "https://rti.gov.in/webportal/RTIAct2005.pdf"),
+    "nfsa": ("National Food Security Act (NFSA Official Guidelines)", "https://dfpd.gov.in"),
+    "pmkisan": ("PM-KISAN Operational Guidelines Official Document", "https://pmkisan.gov.in/Documents/RevisedPM-KISANOperationalGuidelines(English).pdf"),
+    "pm-kisan": ("PM-KISAN Operational Guidelines Official Document", "https://pmkisan.gov.in/Documents/RevisedPM-KISANOperationalGuidelines(English).pdf"),
+    "ayushman": ("Ayushman Bharat PM-JAY Official Portal", "https://pmjay.gov.in/about/pmjay"),
+    "structured schemes": ("myScheme National Official Government Schemes Portal", "https://www.myscheme.gov.in"),
+
+    # Agriculture Specific Deep Links
+    "pmfby": ("Pradhan Mantri Fasal Bima Yojana Operational Guidelines", "https://pmfby.gov.in/pdf/Revised_Operational_Guidelines.pdf"),
+    "fasal_bima": ("PM Fasal Bima Yojana Official Guidelines", "https://pmfby.gov.in/pdf/Revised_Operational_Guidelines.pdf"),
+    "kusum": ("PM-KUSUM Solar Pump Scheme Official Portal", "https://pmkusum.mnre.gov.in"),
+    "soil": ("Soil Health Card National Scheme Portal", "https://soilhealth.dac.gov.in"),
+    "aif": ("Agriculture Infrastructure Fund (AIF Official Portal)", "https://agriinfra.dac.gov.in"),
+    "icar": ("ICAR National Agricultural Research & Advisory Network", "https://icar.org.in"),
+    "kvk": ("Krishi Vigyan Kendra (KVK Advisory Network)", "https://icar.org.in"),
+    "annual_report": ("Ministry of Agriculture Annual Reports & Policy Docs", "https://agricoop.nic.in"),
+    "nfsm": ("National Food Security Mission (NFSM Portal)", "https://nfsm.gov.in"),
+    "pm-rkvy": ("Rashtriya Krishi Vikas Yojana (RKVY Guidelines)", "https://rkvy.nic.in"),
 }
 
-def resolve_web_url(source_name: str) -> Optional[str]:
-    """Maps local vector DB document paths or web URLs to clickable official web links."""
+def resolve_web_url(source_name: str) -> Optional[Tuple[str, str]]:
+    """Maps local vector DB document paths or web URLs to specific official web links and descriptive titles."""
     if not source_name:
         return None
     source_lower = source_name.strip().lower()
-    
+
     if source_lower.startswith("http://") or source_lower.startswith("https://"):
-        return source_name
-        
-    for prefix, web_url in LOCAL_TO_WEB_MAP.items():
+        # Infer specific title from domain if generic
+        if "indiacode.nic.in" in source_lower:
+            title = "India Code Official Legislative Repository"
+        elif "nrega" in source_lower:
+            title = "MGNREGA Official Ministry Portal & Document"
+        elif "pmkisan" in source_lower:
+            title = "PM-KISAN Operational Guidelines & Document"
+        elif "mohfw" in source_lower:
+            title = "Ministry of Health & Family Welfare Document"
+        elif "myscheme" in source_lower:
+            title = "myScheme National Official Portal Document"
+        else:
+            title = source_name.split("/")[2] if "//" in source_name else source_name
+        return (title, source_name)
+
+    for prefix, (title, web_url) in SPECIFIC_SOURCE_MAP.items():
         if prefix in source_lower:
-            return web_url
-            
+            return (title, web_url)
+
     if any(ext in source_lower for ext in [".pdf", ".png", ".jpg", ".txt"]):
         if "health" in source_lower:
-            return "https://www.mohfw.gov.in"
+            return ("Ministry of Health & Family Welfare Document", "https://www.mohfw.gov.in")
         elif "legal" in source_lower:
-            return "https://www.india.gov.in"
+            return ("India Code / Legislative Official Document", "https://www.indiacode.nic.in")
         elif "agri" in source_lower:
-            return "https://agricoop.nic.in"
-            
+            return ("Department of Agriculture & Farmers Welfare", "https://agricoop.nic.in")
+
     return None
 
 def append_source_links(answer_text: str, sources: list) -> str:
-    """Resolves reference URLs from sources list and appends clickable markdown links in a separate section."""
+    """Resolves specific reference URLs from sources list and appends clickable markdown links in a separate section."""
     clean_ans = clean_inline_sources(answer_text)
     if not sources or is_answer_not_found(clean_ans):
         return clean_ans
@@ -251,15 +270,21 @@ def append_source_links(answer_text: str, sources: list) -> str:
     if not rep_sources:
         return clean_ans
 
-    web_urls = set()
+    resolved_links = []
+    seen_urls = set()
+
     for s in rep_sources:
         name = s.get("source") if isinstance(s, dict) else str(s)
-        url = resolve_web_url(name)
-        if url:
-            web_urls.add(url)
+        resolved = resolve_web_url(name)
+        if resolved:
+            title, url = resolved
+            if url not in seen_urls:
+                resolved_links.append((title, url))
+                seen_urls.add(url)
 
-    if web_urls:
-        source_block = "\n\n---\n### 🔗 Reference Sources & Official Links:\n" + "\n".join([f"- [{u}]({u})" for u in sorted(web_urls)])
+    if resolved_links:
+        link_items = [f"- 📄 [{title}]({url})" for title, url in resolved_links]
+        source_block = "\n\n---\n### 🔗 Reference Sources & Official Links:\n" + "\n".join(link_items)
         if "### 🔗 Reference Sources" not in clean_ans:
             return clean_ans + source_block
 
