@@ -2,10 +2,19 @@ import json
 import re
 from typing import Optional, Tuple
 
+def clean_inline_sources(text: str) -> str:
+    """Strips inline 'Source: xyz' or 'स्रोत: xyz' or '(Source: xyz)' from the answer text."""
+    if not text:
+        return text
+    # Strip inline Source / स्रोत citations appended to sentences
+    text = re.sub(r'(?i)\n*\s*(?:source|sources|स्रोत|स्रोतः)\s*:.*$', '', text)
+    text = re.sub(r'(?i)\s*\((?:source|sources|स्रोत|स्रोतः)\s*:.*?\)', '', text)
+    return text.strip()
+
 def parse_agent_json(text: str, default_disclaimer: str) -> Tuple[str, str]:
     """Parse JSON output containing 'factual_response' and 'caution_note' robustly."""
     text_clean = text.strip()
-    
+
     # 1. Clean markdown wrappers
     if "```" in text_clean:
         parts = text_clean.split("```")
@@ -17,41 +26,41 @@ def parse_agent_json(text: str, default_disclaimer: str) -> Tuple[str, str]:
             elif p_strip.startswith("{") and p_strip.endswith("}"):
                 text_clean = p_strip
                 break
-                
+
     # 2. Strict json load
     try:
         data = json.loads(text_clean)
         factual = data.get("factual_response", "").strip()
         caution = data.get("caution_note", "").strip()
         if factual:
-            return factual, caution or default_disclaimer
+            return clean_inline_sources(factual), caution or default_disclaimer
     except Exception:
         pass
 
     # 3. Regex fallback
     factual_match = re.search(r'"factual_response"\s*:\s*"((?:[^"\\]|\\.)*)"', text_clean, re.DOTALL)
     caution_match = re.search(r'"caution_note"\s*:\s*"((?:[^"\\]|\\.)*)"', text_clean, re.DOTALL)
-    
+
     factual = ""
     caution = ""
-    
+
     if factual_match:
         try:
             factual = json.loads('"' + factual_match.group(1) + '"')
         except Exception:
             factual = factual_match.group(1).replace('\\"', '"').replace('\\n', '\n')
-            
+
     if caution_match:
         try:
             caution = json.loads('"' + caution_match.group(1) + '"')
         except Exception:
             caution = caution_match.group(1).replace('\\"', '"').replace('\\n', '\n')
-            
+
     if factual.strip():
-        return factual.strip(), caution.strip() or default_disclaimer
+        return clean_inline_sources(factual.strip()), caution.strip() or default_disclaimer
 
     # 4. Final plain-text fallback
-    return text.strip(), default_disclaimer
+    return clean_inline_sources(text.strip()), default_disclaimer
 
 def initialize_telemetry(state: dict) -> dict:
     """Initialize or load the telemetry metrics dictionary from State Graph state."""
@@ -107,10 +116,9 @@ def filter_representative_sources(answer_text: str, sources: list, retrieved_chu
     """
     Ensures retrieved sources are non-empty, representative, and relevant to the generated answer.
     Filters out system fallbacks, low-relevance noise, and sources not represented in the answer.
-    Returns an empty list if the answer is a fallback 'not found' response or in Hindi/Hinglish.
+    Returns an empty list if the answer is a fallback 'not found' response.
     """
-    from utils.translation_helper import is_hindi_or_hinglish
-    if not sources or is_answer_not_found(answer_text) or is_hindi_or_hinglish(answer_text):
+    if not sources or is_answer_not_found(answer_text):
         return []
 
     answer_lower = answer_text.lower()
@@ -234,21 +242,25 @@ def resolve_web_url(source_name: str) -> Optional[str]:
     return None
 
 def append_source_links(answer_text: str, sources: list) -> str:
-    """Resolves reference URLs from sources list and appends clickable markdown links at the end of the answer."""
-    from utils.translation_helper import is_hindi_or_hinglish
-    if not sources or is_answer_not_found(answer_text) or is_hindi_or_hinglish(answer_text):
-        return answer_text
-        
+    """Resolves reference URLs from sources list and appends clickable markdown links in a separate section."""
+    clean_ans = clean_inline_sources(answer_text)
+    if not sources or is_answer_not_found(clean_ans):
+        return clean_ans
+
+    rep_sources = filter_representative_sources(clean_ans, sources)
+    if not rep_sources:
+        return clean_ans
+
     web_urls = set()
-    for s in sources:
+    for s in rep_sources:
         name = s.get("source") if isinstance(s, dict) else str(s)
         url = resolve_web_url(name)
         if url:
             web_urls.add(url)
-            
+
     if web_urls:
-        source_block = "\n\n### 🔗 Reference Sources & Official Links:\n" + "\n".join([f"- [{u}]({u})" for u in sorted(web_urls)])
-        if "### 🔗 Reference Sources" not in answer_text:
-            return answer_text + source_block
-            
-    return answer_text
+        source_block = "\n\n---\n### 🔗 Reference Sources & Official Links:\n" + "\n".join([f"- [{u}]({u})" for u in sorted(web_urls)])
+        if "### 🔗 Reference Sources" not in clean_ans:
+            return clean_ans + source_block
+
+    return clean_ans

@@ -46,12 +46,12 @@ Guidelines:
 
 CRITICAL FORMATTING INSTRUCTION:
 You MUST respond ONLY with a JSON object containing exactly two fields:
-1. "factual_response": The direct legal/schemes factual answer directly grounded in the context (including context-supported eligibility criteria, required documents, or how to apply if present, formatted cleanly with markdown bullet points if appropriate) followed by the Source citation. Do not include any caution or safety warning here.
+1. "factual_response": The direct legal/schemes factual answer directly grounded in the context (including context-supported eligibility criteria, required documents, or how to apply if present, formatted cleanly with markdown bullet points if appropriate). Do NOT include 'Source:' or 'स्रोत:' inline citations inside the text. Do not include any caution or safety warning here.
 2. "caution_note": A safety note/disclaimer (e.g., 'This information is for guidance only. Consult a legal professional for specific advice.').
 
 Example output format:
 {
-  "factual_response": "To be eligible for the scheme, the applicant must be a resident of India and have an annual income below Rs. 2 Lakhs. Source: National Welfare Scheme Guidelines.",
+  "factual_response": "To be eligible for the scheme, the applicant must be a resident of India and have an annual income below Rs. 2 Lakhs.",
   "caution_note": "This information is for guidance only. Consult a legal professional for specific advice."
 }
 
