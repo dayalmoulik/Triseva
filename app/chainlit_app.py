@@ -244,17 +244,21 @@ async def on_message(message: cl.Message):
     session_id = cl.user_session.get("session_id")
     query      = message.content.strip()
 
-    # Extract uploaded file path
+    # Extract uploaded file path or reuse active session image
     image_path = None
     if message.elements:
         for element in message.elements:
             if element.path and os.path.exists(element.path):
                 image_path = element.path
+                cl.user_session.set("last_image_path", image_path)
                 break
+    else:
+        # Reuse active uploaded image from previous turn in this session
+        image_path = cl.user_session.get("last_image_path")
 
     if not query:
         if image_path:
-            query = "Describe this document."
+            query = "summarize and explain this prescription document."
         else:
             return
 

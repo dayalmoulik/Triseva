@@ -121,7 +121,7 @@ User Query: {state['user_query']}
 
 Guidelines:
 - Ground your answer strictly in the provided [Document Context].
-- If the user asks to summarize, explain, or transcribe the document (e.g., "summarize", "summarize this", "explain prescription", "what is written"), output a structured summary adhering strictly to this markdown structure:
+- Output a structured summary adhering strictly to this markdown structure (for any summarization, analysis, transcription, or explanation request):
   1. **Patient & Clinic Info**: Clinic/hospital header (e.g. The White Tusk), patient name, age/gender, and date (if present). If no doctor name is typed/printed on the prescription (only a signature appears), write "Doctor Name: Not explicitly printed (Signature present)". Do NOT invent or guess doctor names.
   2. **Prescribed Medications Table**: Create a clean GitHub Markdown table with these exact headers:
      | Medication | Dosage / Form | Frequency | Timing | Duration |
