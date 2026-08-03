@@ -151,7 +151,7 @@ def orchestrator_node(state: TriSevaState) -> dict:
             "telemetry": telemetry,
         }
 
-    if any(k in query_lower for k in ["pm kisan", "pm-kisan", "mgnrega", "mnrega", "nrega", "pmay", "rti", "dpdp", "bns", "bnss", "bsa", "ration card", "aadhaar", "land record", "khasra", "khatauni"]):
+    if any(k in query_lower for k in ["pm kisan", "pm-kisan", "mgnrega", "mnrega", "nrega", "pmay", "rti", "dpdp", "bns", "bnss", "bsa", "ration card", "aadhaar", "land record", "khasra", "khatauni", "nagaland", "jameen", "zameen", "kagzat", "kagaj", "chhoot", "patta", "stamp duty", "article 371a"]):
         print("  [Orchestrator] Deterministic domain match -> LEGAL (confidence: 1.0)")
         telemetry["routing_hops"].append("legal")
         return {
