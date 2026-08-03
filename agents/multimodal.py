@@ -44,6 +44,32 @@ def get_cached_ocr(file_bytes: bytes) -> str | None:
     return None
 
 
+COMMON_MEDICAL_OCR_TYPOS = {
+    r"\b(amoxyclv|amoxclav|amoxycilin|amoxicilin)\b": "Amoxyclav",
+    r"\b(paracetaml|paracetmol|paracetm|dolo650|dolo-650)\b": "Dolo (Paracetamol 650mg)",
+    r"\b(azithromicin|azithromcin|azithro)\b": "Azithromycin",
+    r"\b(metformn|metformin500|gluconorm)\b": "Metformin",
+    r"\b(pantoprazol|pantodac|pan40|pan-40)\b": "Pantoprazole 40mg",
+    r"\b(cetrizine|citrizine|cetzine)\b": "Cetirizine",
+    r"\b(ombeprazole|omeprazol)\b": "Omeprazole",
+    r"\b(atorvastatn|atorva)\b": "Atorvastatin",
+    r"\b(augmentin|augmentn)\b": "Augmentin",
+    r"\b(enzoflam|enzoflamm)\b": "Enzoflam",
+    r"\b(pan d|pand40|pan-d)\b": "Pan-D",
+    r"\b(hexigel|hexi-gel)\b": "Hexigel",
+}
+
+def correct_medical_ocr_typos(text: str) -> str:
+    """Post-processes extracted OCR text to fix common doctor handwriting/VLM transcription typos."""
+    if not text:
+        return text
+    import re
+    cleaned = text
+    for pattern, replacement in COMMON_MEDICAL_OCR_TYPOS.items():
+        cleaned = re.sub(pattern, replacement, cleaned, flags=re.IGNORECASE)
+    return cleaned
+
+
 def save_ocr_to_cache(file_bytes: bytes, text: str):
     """Saves extracted OCR text to disk using MD5 hash of file bytes."""
     if not text or not text.strip():
@@ -406,27 +432,6 @@ def image_processing_node(state: TriSevaState) -> dict:
             print(f"multimodal: Image loading or processing failed: {e}")
     else:
         print(f"multimodal: Unsupported file extension: {ext}")
-
-COMMON_MEDICAL_OCR_TYPOS = {
-    r"\b(amoxyclv|amoxclav|amoxycilin|amoxicilin)\b": "Amoxyclav",
-    r"\b(paracetaml|paracetmol|paracetm|dolo650|dolo-650)\b": "Dolo (Paracetamol 650mg)",
-    r"\b(azithromicin|azithromcin|azithro)\b": "Azithromycin",
-    r"\b(metformn|metformin500|gluconorm)\b": "Metformin",
-    r"\b(pantoprazol|pantodac|pan40|pan-40)\b": "Pantoprazole 40mg",
-    r"\b(cetrizine|citrizine|cetzine)\b": "Cetirizine",
-    r"\b(ombeprazole|omeprazol)\b": "Omeprazole",
-    r"\b(atorvastatn|atorva)\b": "Atorvastatin",
-}
-
-def correct_medical_ocr_typos(text: str) -> str:
-    """Post-processes extracted OCR text to fix common doctor handwriting/VLM transcription typos."""
-    if not text:
-        return text
-    import re
-    cleaned = text
-    for pattern, replacement in COMMON_MEDICAL_OCR_TYPOS.items():
-        cleaned = re.sub(pattern, replacement, cleaned, flags=re.IGNORECASE)
-    return cleaned
 
     if extracted_text and len(extracted_text.strip()) > 15:
         extracted_text = correct_medical_ocr_typos(extracted_text)
