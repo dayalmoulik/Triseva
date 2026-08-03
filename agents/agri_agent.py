@@ -150,9 +150,7 @@ def agri_agent_node(state: TriSevaState) -> dict:
         return res
 
     try:
-        global llm
-        if llm is None:
-            llm = get_llm(temperature=0.3, max_tokens=1024)
+        llm = get_llm(temperature=0.3, max_tokens=1024)
 
         doc_context = get_document_context(state)
         if doc_context:
