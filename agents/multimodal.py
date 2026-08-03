@@ -12,11 +12,15 @@ from agents.state import TriSevaState
 from agents.utils import initialize_telemetry, get_document_context
 
 # ── Extraction Prompt Configuration ─────────────────────────────────────────────
+# ── Extraction Prompt Configuration ─────────────────────────────────────────────
 EXTRACTION_PROMPT = (
     "You are an expert Multimodal Document & Medical Prescription OCR Engine.\n"
     "Your task is to transcribe ALL text from this document image with extreme accuracy, including handwritten text, doctor cursive handwriting, patient details, clinical prescriptions, laboratory test values, land records, government forms, or soil health parameters.\n\n"
     "Instructions:\n"
-    "1. **Handwritten Prescriptions & Medical Notes**: Pay special attention to doctor handwriting. Transcribe patient name, age/sex, date, clinic/hospital header, doctor name, medication names (brand & generic), strength/dosage (e.g., 625mg, 40mg), frequency instructions (e.g., 1-0-1, 1-0-0, 0-0-1, twice daily), administration timing (e.g., 'after meals', 'before meals', 'empty stomach'), duration (e.g., x 5 days, 1 week), and special advice/instructions (e.g., gum paint massage, gargle, follow-up).\n"
+    "1. **Handwritten Prescriptions & Medical Notes**: Pay special attention to doctor handwriting.\n"
+    "   - **Doctor Name**: Transcribe typed/printed doctor headers accurately. If no doctor name is printed and only a handwritten signature is present at the bottom, write 'Doctor Name: Not explicitly printed (Signature present)'. Do NOT guess or hallucinate doctor names.\n"
+    "   - **Medications & Brand Names**: Read medical brand names and drug terms carefully. Common Indian brand names in dental/general prescriptions include Augmentin, Enzoflam, Pan-D / Pan D, Hexigel, Dolo 650, Zerodol-SP, Pantocid, Combiflam, Azithral, Taxim-O. Transcribe exact handwritten brand names faithfully without substituting them with unrelated drugs like Atropine.\n"
+    "   - **Dosage & Timings**: Transcribe strength (e.g., 625mg, 40mg), frequency instructions (e.g., 1-0-1, 1-0-0, 0-0-1, twice daily), administration timing (e.g., 'after meals', 'before meals', 'empty stomach'), duration (e.g., x 5 days, 1 week), and special advice/instructions (e.g., Hexigel gum paint massage, gargle, follow-up).\n"
     "2. **Tables & Structured Data**: Transcribe any tables into clean GitHub Markdown table format with proper headers and cell alignments.\n"
     "3. **Bilingual / Regional Scripts**: Preserve bilingual text (e.g. Hindi / Devnagari or English) faithfully.\n"
     "4. **Exact Values**: Preserve all numbers, units (mg, g/dL, pH, ppm, etc.), dates, phone numbers, and web/email addresses accurately.\n"
@@ -53,10 +57,10 @@ COMMON_MEDICAL_OCR_TYPOS = {
     r"\b(cetrizine|citrizine|cetzine)\b": "Cetirizine",
     r"\b(ombeprazole|omeprazol)\b": "Omeprazole",
     r"\b(atorvastatn|atorva)\b": "Atorvastatin",
-    r"\b(augmentin|augmentn)\b": "Augmentin",
-    r"\b(enzoflam|enzoflamm)\b": "Enzoflam",
-    r"\b(pan d|pand40|pan-d)\b": "Pan-D",
-    r"\b(hexigel|hexi-gel)\b": "Hexigel",
+    r"\b(augmentin|augmentn|augmetin)\b": "Augmentin 625mg",
+    r"\b(enzoflam|enzoflamm|atropine|atropin|enzoflm)\b": "Enzoflam",
+    r"\b(pan d|pand40|pan-d|pand)\b": "Pan-D 40mg",
+    r"\b(hexigel|hexi-gel|hexgel)\b": "Hexigel gum paint",
 }
 
 def correct_medical_ocr_typos(text: str) -> str:

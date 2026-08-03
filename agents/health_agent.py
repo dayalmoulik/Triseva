@@ -122,12 +122,12 @@ User Query: {state['user_query']}
 Guidelines:
 - Ground your answer strictly in the provided [Document Context].
 - If the user asks to summarize, explain, or transcribe the document (e.g., "summarize", "summarize this", "explain prescription", "what is written"), output a structured summary adhering strictly to this markdown structure:
-  1. **Patient & Clinic Info**: Doctor name, clinic/hospital header, patient name, age/gender, and date (if present).
+  1. **Patient & Clinic Info**: Clinic/hospital header (e.g. The White Tusk), patient name, age/gender, and date (if present). If no doctor name is typed/printed on the prescription (only a signature appears), write "Doctor Name: Not explicitly printed (Signature present)". Do NOT invent or guess doctor names.
   2. **Prescribed Medications Table**: Create a clean GitHub Markdown table with these exact headers:
      | Medication | Dosage / Form | Frequency | Timing | Duration |
      | :--- | :--- | :--- | :--- | :--- |
      Fill in all prescribed drugs (brand & generic), dosage (e.g., 625mg), frequency (e.g. 1-0-1 or Twice Daily), administration timing (e.g. After Meals), and duration (e.g. 5 days).
-  3. **Doctor Advice & Clinical Notes**: Bullet points of gargling, fluids, follow-up, or precautions written on the prescription.
+  3. **Doctor Advice & Clinical Notes**: Bullet points of gargling, fluids, gum paint massage, follow-up, or precautions written on the prescription.
 - Never diagnose — provide an informational explanation of prescribed medications and clinical instructions.
 - CRITICAL PARAMETRIC GUARDRAIL: If the provided [Document Context] is empty or completely unreadable and does not contain valid document text, return a JSON object where "factual_response" is exactly "I cannot find the answer to this in the available database." and "caution_note" contains your standard disclaimer.
 
