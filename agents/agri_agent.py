@@ -167,13 +167,19 @@ User Query: {state['user_query']}
 
 Guidelines:
 - Ground your answer strictly in the provided [Document Context].
-- If the user asks to summarize or explain the document (e.g. "summarize", "explain this", "summarize soil health card"), provide a clear, comprehensive summary of all key values (NPK, pH, electrical conductivity), crop recommendations, and advisories present in the document.
+- If the user asks to summarize or explain the document (e.g., "summarize", "explain this", "summarize soil health card"), output a structured summary adhering strictly to this markdown structure:
+  1. **Farmer & Soil Card Details**: Farmer Name, Village/District, Sample ID, and Date (if present).
+  2. **Soil Parameter & Nutrient Table**: Create a clean GitHub Markdown table with these exact headers:
+     | Nutrient / Parameter | Value / Reading | Status Level | Recommended Action |
+     | :--- | :--- | :--- | :--- |
+     Fill in all available readings (pH, EC, Nitrogen, Phosphorus, Potassium, Organic Carbon, Zinc, Boron, etc.), status (High/Medium/Low), and recommended action.
+  3. **Fertilizer & Crop Recommendations**: Actionable dosage recommendations per acre (e.g. Urea, DAP, SSP, Zinc Sulphate) and crop advisories.
 - Avoid unsafe chemical advice; recommend label and local agriculture officer guidance.
 - CRITICAL PARAMETRIC GUARDRAIL: If the provided [Document Context] is empty or unreadable and does not contain valid text, return a JSON object where "factual_response" is exactly "I cannot find the answer to this in the available database." and "caution_note" contains your standard disclaimer.
 
 CRITICAL FORMATTING INSTRUCTION:
 You MUST respond ONLY with a JSON object containing exactly two fields:
-1. "factual_response": A clear, well-structured summary or direct answer grounded in the document context. Do NOT include 'Source:' or 'स्रोत:' inline citations.
+1. "factual_response": A clear, structured Soil Health Card summary containing the Markdown table and actionable advice grounded in the document context. Do NOT include 'Source:' or 'स्रोत:' inline citations.
 2. "caution_note": A safety note/caution note (e.g., 'Always verify schemes on official government portals and follow local agriculture officer guidance.').
 
 Do not include any text outside the JSON object."""

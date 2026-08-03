@@ -202,12 +202,18 @@ User Query: {state['user_query']}
 
 Guidelines:
 - Ground your answer strictly in the provided [Document Context].
-- If the user asks to summarize or explain the document (e.g. "summarize", "explain this", "summarize document"), provide a clear, comprehensive summary of all key terms, eligibility rules, rights, and instructions present in the document.
+- If the user asks to summarize or explain the document (e.g., "summarize", "explain this", "summarize document"), output a structured summary adhering strictly to this markdown structure:
+  1. **Document / Scheme Overview**: Official title, department/ministry, target beneficiary group, and application deadlines (if present).
+  2. **Key Scheme Provisions & Benefits Table**: Create a clean GitHub Markdown table with these exact headers:
+     | Feature / Category | Eligibility Rule | Benefit Amount / Entitlement | Required Verification |
+     | :--- | :--- | :--- | :--- |
+     Fill in all specific income caps, landholding limits, financial assistance amounts, and verification procedures.
+  3. **Application Steps & Required Documents**: Bullet points of necessary documents (Aadhaar, Ration Card, Bank Passbook) and submission steps.
 - CRITICAL PARAMETRIC GUARDRAIL: If the provided [Document Context] is empty or unreadable and does not contain valid text, return a JSON object where "factual_response" is exactly "I cannot find the answer to this in the available database." and "caution_note" contains your standard disclaimer.
 
 CRITICAL FORMATTING INSTRUCTION:
 You MUST respond ONLY with a JSON object containing exactly two fields:
-1. "factual_response": A clear, well-structured summary or direct answer grounded in the document context. Do NOT include 'Source:' or 'स्रोत:' inline citations.
+1. "factual_response": A clear, structured legal/scheme summary containing the Markdown table and application steps grounded in the document context. Do NOT include 'Source:' or 'स्रोत:' inline citations.
 2. "caution_note": A safety note/disclaimer (e.g., 'This information is for guidance only. Consult a legal professional for specific advice.').
 
 Do not include any text outside the JSON object."""

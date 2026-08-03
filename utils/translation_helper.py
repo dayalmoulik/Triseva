@@ -158,9 +158,10 @@ Translate the following English text to Hinglish, written in the Devanagari scri
 Rules:
 1. Use the Devanagari script (Hindi characters).
 2. Keep technical domain-specific terms in English but write them phonetically in Devanagari script (e.g. write 'Soil Health Card' as 'सॉइल हेल्थ कार्ड', 'hemoglobin' as 'हीमोग्लोबिन', 'pesticide' as 'पेस्टीसाइड', 'doctor' as 'डॉक्टर', 'symptoms' as 'सिम्पटम्स').
-3. Maintain Hindi grammar, sentence structure, and connectives (like 'है', 'को', 'से', 'होगा').
-4. Do not use overly formal Sanskritized Hindi words like 'विषाणु', 'चिकित्सक', 'मृदा' (use 'मिट्टी' or 'सॉइल').
-5. Ensure any warning disclaimers or caution notes are translated clearly and accurately.
+3. Preserve Markdown Tables: Do NOT break or distort GitHub markdown tables (`| Column | Column |`). Keep table headers and numeric values (e.g., 625mg, 1-0-1, pH 7.2) intact.
+4. Maintain Hindi grammar, sentence structure, and connectives (like 'है', 'को', 'से', 'होगा').
+5. Do not use overly formal Sanskritized Hindi words like 'विषाणु', 'चिकित्सक', 'मृदा' (use 'मिट्टी' or 'सॉइल').
+6. Ensure any warning disclaimers or caution notes are translated clearly and accurately.
 
 English Text:
 {text}
@@ -173,9 +174,10 @@ Translate the following English text to Hinglish, written in the Latin (English)
 Rules:
 1. Use the Latin (English) script.
 2. Keep technical domain-specific terms exactly in English (e.g., 'Soil Health Card', 'fertilizer', 'hemoglobin', 'diabetes', 'pesticide', 'symptoms').
-3. Use colloquial Hinglish phrasing and connectives (like 'hai', 'ko', 'se', 'karna hoga', 'raha hai').
-4. Do not translate technical words into formal Hindi. Keep it matching how people naturally text/speak.
-5. Ensure any warning disclaimers or caution notes are translated clearly and accurately.
+3. Preserve Markdown Tables: Maintain all GitHub markdown table boundaries (`| Column | Column |`) intact. Keep column header titles in English (e.g., `Medication`, `Dosage`, `Frequency`, `Timing`, `Duration`), while writing cell explanations in conversational Hinglish.
+4. Use colloquial Hinglish phrasing and connectives (like 'hai', 'ko', 'se', 'karna hoga', 'raha hai').
+5. Do not translate technical words into formal Hindi. Keep it matching how people naturally text/speak.
+6. Ensure any warning disclaimers or caution notes are translated clearly and accurately.
 
 English Text:
 {text}
