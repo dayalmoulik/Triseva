@@ -131,7 +131,7 @@ def orchestrator_node(state: TriSevaState) -> dict:
     query_lower = classification_text.strip().lower()
 
     # High-precision deterministic domain overrides for unambiguous domain markers
-    if any(k in query_lower for k in ["prescription", "prescriptions", "rx", "medicine", "medication", "dosage", "tablet", "syrup", "capsule", "clinic", "doctor", "clinical", "patient", "diagnosis", "ayushman", "pm-jay", "pmjay", "haemoglobin", "hemoglobin", "homeoglobin", "hospital", "medline"]):
+    if any(k in query_lower for k in ["prescription", "prescriptions", "rx", "medicine", "medication", "dosage", "tablet", "tablets", "syrup", "capsule", "capsules", "injection", "inj", "tab", "syp", "cap", "opd", "ipd", "clinic", "doctor", "clinical", "patient", "diagnosis", "ayushman", "pm-jay", "pmjay", "haemoglobin", "hemoglobin", "homeoglobin", "hospital", "medline", "pharma", "pharmacy", "medical", "health", "consultant"]):
         print("  [Orchestrator] Deterministic domain match -> HEALTH (confidence: 1.0)")
         telemetry["routing_hops"].append("health")
         return {
@@ -166,10 +166,10 @@ def orchestrator_node(state: TriSevaState) -> dict:
     domain = None
     confidence = 1.0
 
-    # 2. Local DistilBERT Classification
+    # 2. Local DistilBERT Classification on combined query + image text
     if _model is not None and _tokenizer is not None:
         try:
-            inputs = _tokenizer(query, return_tensors="pt", truncation=True, padding=True, max_length=128)
+            inputs = _tokenizer(classification_text, return_tensors="pt", truncation=True, padding=True, max_length=128)
             with torch.no_grad():
                 outputs = _model(**inputs)
             
@@ -197,13 +197,13 @@ def orchestrator_node(state: TriSevaState) -> dict:
                 router_chain = ROUTER_PROMPT | llm
 
             # Set timeout to 10 seconds for the orchestrator routing LLM
-            response = router_chain.invoke({"query": query}, config={"timeout": 10})
+            response = router_chain.invoke({"query": classification_text}, config={"timeout": 10})
             domain = response.content.strip().lower()
             confidence = 1.0
 
             if domain not in ["health", "legal", "agriculture"]:
                 print(f"  [Orchestrator] Unexpected domain '{domain}' — defaulting via regex router")
-                domain = regex_keyword_router(query)
+                domain = regex_keyword_router(classification_text)
                 confidence = 0.5
                 telemetry["is_fallback_routing"] = True
                 telemetry["fallback_routing_method"] = "regex"
