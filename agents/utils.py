@@ -13,23 +13,33 @@ def clean_inline_sources(text: str) -> str:
 
 def parse_agent_json(text: str, default_disclaimer: str) -> Tuple[str, str]:
     """Parse JSON output containing 'factual_response' and 'caution_note' robustly."""
+    if not text:
+        return "", default_disclaimer
+
     text_clean = text.strip()
 
-    # 1. Clean markdown wrappers
+    # 1. Clean markdown code fence wrappers (```json ... ```)
     if "```" in text_clean:
         parts = text_clean.split("```")
         for p in parts:
             p_strip = p.strip()
             if p_strip.startswith("json"):
-                text_clean = p_strip[4:].strip()
-                break
-            elif p_strip.startswith("{") and p_strip.endswith("}"):
-                text_clean = p_strip
+                p_strip = p_strip[4:].strip()
+            if "{" in p_strip and "}" in p_strip:
+                start = p_strip.find("{")
+                end = p_strip.rfind("}") + 1
+                text_clean = p_strip[start:end]
                 break
 
-    # 2. Strict json load
+    if not (text_clean.startswith("{") and text_clean.endswith("}")):
+        if "{" in text_clean and "}" in text_clean:
+            start = text_clean.find("{")
+            end = text_clean.rfind("}") + 1
+            text_clean = text_clean[start:end]
+
+    # 2. Permissive json load with strict=False (handles unescaped control chars/newlines inside strings)
     try:
-        data = json.loads(text_clean)
+        data = json.loads(text_clean, strict=False)
         factual = data.get("factual_response", "").strip()
         caution = data.get("caution_note", "").strip()
         if factual:
@@ -37,30 +47,39 @@ def parse_agent_json(text: str, default_disclaimer: str) -> Tuple[str, str]:
     except Exception:
         pass
 
-    # 3. Regex fallback
-    factual_match = re.search(r'"factual_response"\s*:\s*"((?:[^"\\]|\\.)*)"', text_clean, re.DOTALL)
-    caution_match = re.search(r'"caution_note"\s*:\s*"((?:[^"\\]|\\.)*)"', text_clean, re.DOTALL)
+    # 3. Multiline Regex fallback for "factual_response" and "caution_note"
+    factual_match = re.search(r'"factual_response"\s*:\s*"(.*?)"\s*,\s*"caution_note"', text_clean, re.DOTALL)
+    if not factual_match:
+        factual_match = re.search(r'"factual_response"\s*:\s*"(.*)"', text_clean, re.DOTALL)
+
+    caution_match = re.search(r'"caution_note"\s*:\s*"(.*?)"\s*\}', text_clean, re.DOTALL)
 
     factual = ""
     caution = ""
 
     if factual_match:
-        try:
-            factual = json.loads('"' + factual_match.group(1) + '"')
-        except Exception:
-            factual = factual_match.group(1).replace('\\"', '"').replace('\\n', '\n')
+        raw_f = factual_match.group(1)
+        if raw_f.endswith('",'):
+            raw_f = raw_f[:-2]
+        elif raw_f.endswith('"'):
+            raw_f = raw_f[:-1]
+        factual = raw_f.replace('\\"', '"').replace('\\n', '\n').replace('\\t', '\t')
 
     if caution_match:
-        try:
-            caution = json.loads('"' + caution_match.group(1) + '"')
-        except Exception:
-            caution = caution_match.group(1).replace('\\"', '"').replace('\\n', '\n')
+        raw_c = caution_match.group(1)
+        if raw_c.endswith('"'):
+            raw_c = raw_c[:-1]
+        caution = raw_c.replace('\\"', '"').replace('\\n', '\n')
 
     if factual.strip():
         return clean_inline_sources(factual.strip()), caution.strip() or default_disclaimer
 
-    # 4. Final plain-text fallback
-    return clean_inline_sources(text.strip()), default_disclaimer
+    # 4. Cleanup JSON syntax wrapper if regex fails so raw JSON brackets are never displayed to users
+    cleaned_fallback = re.sub(r'^\s*\{\s*"factual_response"\s*:\s*"?', '', text_clean, flags=re.IGNORECASE)
+    cleaned_fallback = re.sub(r'"\s*,\s*"caution_note"\s*:.*$', '', cleaned_fallback, flags=re.DOTALL | re.IGNORECASE)
+    cleaned_fallback = re.sub(r'"\s*\}\s*$', '', cleaned_fallback).strip()
+
+    return clean_inline_sources(cleaned_fallback), default_disclaimer
 
 def initialize_telemetry(state: dict) -> dict:
     """Initialize or load the telemetry metrics dictionary from State Graph state."""
