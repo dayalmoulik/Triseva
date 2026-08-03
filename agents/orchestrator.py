@@ -131,7 +131,7 @@ def orchestrator_node(state: TriSevaState) -> dict:
     query_lower = classification_text.strip().lower()
 
     # High-precision deterministic domain overrides for unambiguous domain markers
-    if any(k in query_lower for k in ["prescription", "prescriptions", "rx", "medicine", "medication", "dosage", "tablet", "tablets", "syrup", "capsule", "capsules", "injection", "inj", "tab", "syp", "cap", "opd", "ipd", "clinic", "doctor", "clinical", "patient", "diagnosis", "ayushman", "pm-jay", "pmjay", "haemoglobin", "hemoglobin", "homeoglobin", "hospital", "medline", "pharma", "pharmacy", "medical", "health", "consultant"]):
+    if any(k in query_lower for k in ["prescription", "prescriptions", "rx", "medicine", "medication", "dosage", "tablet", "tablets", "syrup", "capsule", "capsules", "injection", "inj", "tab", "syp", "cap", "opd", "ipd", "clinic", "doctor", "clinical", "patient", "diagnosis", "ayushman", "pm-jay", "pmjay", "haemoglobin", "hemoglobin", "homeoglobin", "hospital", "medline", "pharma", "pharmacy", "medical", "consultant", "dental", "teeth", "white tusk", "augmentin", "enzoflam", "pan d", "hexigel"]):
         print("  [Orchestrator] Deterministic domain match -> HEALTH (confidence: 1.0)")
         telemetry["routing_hops"].append("health")
         return {
@@ -141,7 +141,17 @@ def orchestrator_node(state: TriSevaState) -> dict:
             "telemetry": telemetry,
         }
 
-    if any(k in query_lower for k in ["pm kisan", "pm-kisan", "mgnrega", "mnrega", "nrega", "pmay", "rti", "dpdp", "bns", "bnss", "bsa"]):
+    if any(k in query_lower for k in ["soil health card", "soil health", "npk", "organic carbon", "fertilizer", "pesticide", "fungicide", "soil test", "krishi", "kvk", "dap", "urea", "crop loss", "farm holding"]):
+        print("  [Orchestrator] Deterministic domain match -> AGRICULTURE (confidence: 1.0)")
+        telemetry["routing_hops"].append("agriculture")
+        return {
+            "domain": "agriculture",
+            "routing_decision": "agriculture",
+            "retry_count": retry_count,
+            "telemetry": telemetry,
+        }
+
+    if any(k in query_lower for k in ["pm kisan", "pm-kisan", "mgnrega", "mnrega", "nrega", "pmay", "rti", "dpdp", "bns", "bnss", "bsa", "ration card", "aadhaar", "land record", "khasra", "khatauni"]):
         print("  [Orchestrator] Deterministic domain match -> LEGAL (confidence: 1.0)")
         telemetry["routing_hops"].append("legal")
         return {

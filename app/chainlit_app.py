@@ -258,7 +258,7 @@ async def on_message(message: cl.Message):
 
     if not query:
         if image_path:
-            query = "summarize and explain this prescription document."
+            query = "Summarize and explain the provided document image."
         else:
             return
 
