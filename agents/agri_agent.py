@@ -165,7 +165,7 @@ User Query: {state['user_query']}
 
 Guidelines:
 - Ground your answer strictly in the provided [Document Context].
-- If the user asks to summarize or explain the document (e.g., "summarize", "explain this", "summarize soil health card"), output a structured summary adhering strictly to this markdown structure:
+- Output a structured summary adhering strictly to this markdown structure (for any summarization, analysis, transcription, or explanation request):
   1. **Farmer & Soil Card Details**: Farmer Name, Village/District, Sample ID, and Date (if present).
   2. **Soil Parameter & Nutrient Table**: Create a clean GitHub Markdown table with these exact headers:
      | Nutrient / Parameter | Value / Reading | Status Level | Recommended Action |

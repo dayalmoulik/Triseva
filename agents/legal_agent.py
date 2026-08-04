@@ -200,7 +200,7 @@ User Query: {state['user_query']}
 
 Guidelines:
 - Ground your answer strictly in the provided [Document Context].
-- If the user asks to summarize or explain the document (e.g., "summarize", "explain this", "summarize document"), output a structured summary adhering strictly to this markdown structure:
+- Output a structured summary adhering strictly to this markdown structure (for any summarization, analysis, transcription, or explanation request):
   1. **Document / Scheme Overview**: Official title, department/ministry, target beneficiary group, and application deadlines (if present).
   2. **Key Scheme Provisions & Benefits Table**: Create a clean GitHub Markdown table with these exact headers:
      | Feature / Category | Eligibility Rule | Benefit Amount / Entitlement | Required Verification |
