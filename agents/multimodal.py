@@ -119,8 +119,8 @@ def preprocess_image_bytes(image_bytes: bytes) -> bytes:
         enhancer_sharpness = ImageEnhance.Sharpness(image)
         image = enhancer_sharpness.enhance(1.5)
 
-        # 5. Resize if oversized (max dimension 2048px)
-        max_dim = 2048
+        # 5. Intelligently resize if oversized (max dimension 1600px)
+        max_dim = 1600
         width, height = image.size
         if width > max_dim or height > max_dim:
             if width > height:
@@ -132,7 +132,7 @@ def preprocess_image_bytes(image_bytes: bytes) -> bytes:
             image = image.resize((new_w, new_h), Image.Resampling.LANCZOS)
 
         output_io = io.BytesIO()
-        image.save(output_io, format="JPEG", quality=95)
+        image.save(output_io, format="JPEG", quality=88)
         return output_io.getvalue()
     except Exception as e:
         print(f"multimodal: Image preprocessing warning (using raw bytes): {e}")
@@ -188,10 +188,24 @@ def extract_via_azure_document_intelligence(image_bytes: bytes) -> str:
     return ""
 
 
+def is_ollama_online(ollama_url: str) -> bool:
+    """Fast (0.5s) check to see if local Ollama server is reachable."""
+    try:
+        tags_url = ollama_url.replace("/api/generate", "/api/tags")
+        r = requests.get(tags_url, timeout=0.8)
+        return r.status_code == 200
+    except Exception:
+        return False
+
+
 def extract_text_via_qwen_vl(image_bytes: bytes) -> str:
     """Uses Qwen2.5-VL (via local Ollama or vLLM endpoint) for high-accuracy document & medical handwriting OCR."""
-    import base64
     ollama_url = os.getenv("OLLAMA_API_BASE", "http://localhost:11434/api/generate")
+    if not is_ollama_online(ollama_url):
+        print("multimodal: Local Ollama server is offline/unreachable. Skipping local VLM attempts.")
+        return ""
+
+    import base64
     models_to_try = [
         os.getenv("QWEN_VLM_MODEL", "llama3.2-vision"),
         "llama3.2-vision",
@@ -214,7 +228,7 @@ def extract_text_via_qwen_vl(image_bytes: bytes) -> str:
                     "temperature": 0
                 }
             }
-            response = requests.post(ollama_url, json=payload, timeout=60)
+            response = requests.post(ollama_url, json=payload, timeout=12)
             if response.status_code == 200:
                 result = response.json()
                 ans = result.get("response", "")
@@ -229,8 +243,12 @@ def extract_text_via_qwen_vl(image_bytes: bytes) -> str:
 
 def extract_text_via_local_ollama(image_bytes: bytes) -> str:
     """Uses local VLM (Qwen2.5-VL / InternVL2-8B) via Ollama/local endpoint for OCR/extraction."""
-    import base64
     ollama_url = os.getenv("OLLAMA_API_BASE", "http://localhost:11434/api/generate")
+    if not is_ollama_online(ollama_url):
+        print("multimodal: Local Ollama server is offline. Skipping local VLM.")
+        return ""
+
+    import base64
     model_name = os.getenv("OLLAMA_VLM_MODEL", os.getenv("QWEN_VLM_MODEL", "qwen2.5-vl"))
 
     print(f"Calling local Ollama model '{model_name}' (Local OCR) for text extraction...")
