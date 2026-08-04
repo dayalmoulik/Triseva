@@ -153,9 +153,16 @@ def filter_representative_sources(answer_text: str, sources: list, retrieved_chu
 
         if isinstance(s, dict):
             source_name = s.get("source", "").strip()
-            score = s.get("score", 1.0)
+            try:
+                score = float(s.get("score", 1.0))
+            except Exception:
+                score = 1.0
         elif isinstance(s, str):
             source_name = s.strip()
+
+        # Remove any source with confidence less than or equal to 0% (score <= 0)
+        if score <= 0:
+            continue
 
         if not source_name or source_name.lower() in ["system", "no context.", "no context", "unknown", "no web results found."]:
             continue

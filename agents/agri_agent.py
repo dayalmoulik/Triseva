@@ -127,7 +127,8 @@ def agri_agent_node(state: TriSevaState) -> dict:
         if chunks:
             for idx, c in enumerate(chunks, 1):
                 retrieved_chunks_list.append(c["text"])
-                retrieved_sources_list.append({"source": c["source"], "score": c["score"]})
+                if float(c.get("score", 1.0)) > 0:
+                    retrieved_sources_list.append({"source": c["source"], "score": c["score"]})
                 context += f"[Source {idx}: {c['source']}]\n{c['text']}\n\n"
         return context if context else "No relevant context found in agriculture database."
 

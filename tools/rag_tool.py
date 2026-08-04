@@ -356,8 +356,8 @@ def retrieve(query: str, domain: str, n_results: int = 7, native_query: str = No
         for idx, score in enumerate(rerank_scores):
             rerank_candidates[idx]["score"] = round(float(score), 4)
             
-        # Sort candidates by re-ranker score descending
-        final_chunks = sorted(rerank_candidates, key=lambda c: c["score"], reverse=True)[:n_results]
+        # Sort candidates by re-ranker score descending and remove any chunks with score <= 0 (less than 0% confidence)
+        final_chunks = [c for c in sorted(rerank_candidates, key=lambda c: c["score"], reverse=True) if c.get("score", 0) > 0][:n_results]
         
         # Expand context with sequential neighbors
         for chunk in final_chunks:
