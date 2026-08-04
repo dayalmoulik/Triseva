@@ -143,10 +143,38 @@ def init_db():
 init_db()
 
 
-# ── Data Persistence Layer ──────────────────────────────────────────────────
+# ── Data Persistence Layer & Local Element Storage ───────────────────────────
+from chainlit.data.storage_clients.base import BaseStorageClient
+
+class LocalFileStorageClient(BaseStorageClient):
+    """Local file storage provider for uploaded elements in Chainlit."""
+    def __init__(self, upload_dir="./public/elements"):
+        self.upload_dir = os.path.abspath(upload_dir)
+        os.makedirs(self.upload_dir, exist_ok=True)
+        
+    async def upload_file(self, object_key: str, data: bytes, mime: str = "application/octet-stream") -> dict:
+        file_path = os.path.join(self.upload_dir, os.path.basename(object_key))
+        with open(file_path, "wb") as f:
+            f.write(data)
+        return {"url": f"/public/elements/{os.path.basename(object_key)}", "object_key": object_key}
+
+    async def get_read_url(self, object_key: str) -> str:
+        return f"/public/elements/{os.path.basename(object_key)}"
+
+    async def delete_file(self, object_key: str) -> bool:
+        file_path = os.path.join(self.upload_dir, os.path.basename(object_key))
+        if os.path.exists(file_path):
+            os.remove(file_path)
+            return True
+        return False
+
+    async def close(self) -> None:
+        pass
+
 @cl.data_layer
 def get_data_layer():
-    return SQLAlchemyDataLayer(conninfo="sqlite+aiosqlite:///chainlit.db")
+    storage_client = LocalFileStorageClient()
+    return SQLAlchemyDataLayer(conninfo="sqlite+aiosqlite:///chainlit.db", storage_provider=storage_client, show_logger=False)
 
 
 # ── User Authentication ──────────────────────────────────────────────────────
