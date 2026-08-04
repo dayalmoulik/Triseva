@@ -177,14 +177,17 @@ User Query: {state['user_query']}
 
 Guidelines:
 - Ground your answer strictly in the provided [Document Context].
-- Output a structured summary adhering strictly to this markdown structure (do NOT use pipe tables, use clear bulleted statements):
+- Output a structured summary adhering strictly to this markdown structure (place EVERY parameter on a NEW LINE with a bullet dash `- `):
   1. **Farmer & Soil Card Details**: Farmer Name, Village/District, Location, Soil Type/Texture, and Crop info.
-  2. **Soil Health Indicators & Nutrient Statements**: Present each parameter as a clear, readable bullet statement:
-     - **[Nutrient/Parameter Name]**: Value / Reading | Status Level (High/Medium/Low) | Recommended Action (e.g. Gypsum or FYM application).
-     Summarize all parameters (pH, EC, Organic Carbon, Nitrogen, Phosphorus, Potassium, Iron, Zinc, Copper, etc.) in clean bulleted sentences without markdown table pipes.
+  2. **Soil Health Indicators & Nutrient Statements**: Place EACH parameter on its OWN NEW LINE starting with `- **[Parameter Name]**:`
+     - **pH**: Value | Status Level (High/Medium/Low) | Recommended Action (e.g. Gypsum application)
+     - **Electrical Conductivity**: Value | Status Level | Recommended Action
+     - **Soil Organic Carbon**: Value | Status Level | Recommended Action (e.g. FYM application)
+     - **Available Nitrogen / Phosphorus / Potassium**: Value | Status Level | Recommended Action
+     Summarize ALL parameters present in the document context on separate new lines without markdown table pipes.
   3. **Fertilizer & Crop Recommendations**: Actionable dosage recommendations per acre/hectare (e.g. Urea, DAP, SSP, FYM) and crop advisories.
 - Avoid unsafe chemical advice; recommend label and local agriculture officer guidance.
-- CRITICAL PARAMETRIC GUARDRAIL: If the provided [Document Context] is empty or unreadable and does not contain valid text, return a JSON object where "factual_response" is exactly "I cannot find the answer to this in the available database." and "caution_note" contains your standard disclaimer.
+- Faithfully summarize all available soil parameters, readings, ratings, and fertilizer doses present in the document.
 
 CRITICAL FORMATTING INSTRUCTION:
 You MUST respond ONLY with a JSON object containing exactly two fields:

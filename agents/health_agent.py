@@ -130,13 +130,14 @@ User Query: {state['user_query']}
 
 Guidelines:
 - Ground your answer strictly in the provided [Document Context].
-- Output a structured summary adhering strictly to this markdown structure (do NOT use pipe tables, use clear bulleted statements):
-  1. **Patient & Clinic Info**: Clinic/hospital header (e.g. The White Tusk), patient name, age/gender, and date (if present). If no doctor name is typed/printed on the prescription (only a signature appears), write "Doctor Name: Not explicitly printed (Signature present)". Do NOT invent or guess doctor names.
-  2. **Prescribed Medications**: List each prescribed drug (brand & generic) as a clean bullet point:
-     - **[Medication Name]**: Dosage (e.g. 625mg) | Frequency (e.g. 1-0-1 or Twice Daily) | Timing (e.g. After Meals) | Duration (e.g. 5 days).
-  3. **Doctor Advice & Clinical Notes**: Bullet points of gargling, fluids, gum paint massage, follow-up, or precautions written on the prescription.
+- Output a structured summary adhering strictly to this markdown structure (place EVERY item on a NEW LINE with a bullet dash `- `):
+  1. **Patient & Clinic Info**: Clinic/hospital header, patient name, age/gender, and date (if present). If no doctor name is typed/printed on the prescription (only a signature appears), write "Doctor Name: Not explicitly printed (Signature present)". Do NOT invent doctor names.
+  2. **Prescribed Medications**: Place EACH prescribed drug on its OWN NEW LINE starting with `- **[Medication Name]**:`
+     - **[Medication 1]**: Dosage (e.g. 625mg) | Frequency (e.g. 1-0-1 or Twice Daily) | Administration Timing (e.g. After Meals) | Duration (e.g. 5 days)
+     - **[Medication 2]**: Dosage | Frequency | Administration Timing | Duration
+  3. **Doctor Advice & Clinical Notes**: Bullet points of gargling, fluids, gum paint massage, follow-up, or precautions on separate new lines.
 - Never diagnose — provide an informational explanation of prescribed medications and clinical instructions.
-- CRITICAL PARAMETRIC GUARDRAIL: If the provided [Document Context] is empty or completely unreadable and does not contain valid document text, return a JSON object where "factual_response" is exactly "I cannot find the answer to this in the available database." and "caution_note" contains your standard disclaimer.
+- Faithfully transcribe all prescribed medications, dosages, timings, and clinical notes present in the document.
 
 CRITICAL FORMATTING INSTRUCTION:
 You MUST respond ONLY with a JSON object containing exactly two fields:
