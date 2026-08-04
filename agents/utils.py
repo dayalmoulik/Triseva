@@ -308,3 +308,40 @@ def append_source_links(answer_text: str, sources: list) -> str:
             return clean_ans + source_block
 
     return clean_ans
+
+def safe_llm_invoke(llm, prompt: str, temperature: float = 0.3, max_tokens: int = 1024) -> str:
+    """Invokes primary LLM and automatically fails over to Groq/OpenAI/Claude if primary returns empty string."""
+    import os
+    try:
+        res = llm.invoke(prompt)
+        content = res.content if res and hasattr(res, "content") else str(res)
+        if content and len(content.strip()) > 10:
+            return content
+    except Exception as e:
+        print(f"  [safe_llm_invoke] Primary LLM exception: {e}")
+
+    # Fallback to Groq / OpenAI / Claude if primary returned empty string or raised exception
+    print("  [safe_llm_invoke] Primary LLM returned empty string or failed. Triggering secondary cloud LLM fallback...")
+    groq_key = os.getenv("GROQ_API_KEY")
+    if groq_key:
+        try:
+            from langchain_groq import ChatGroq
+            fallback = ChatGroq(model_name="llama-3.3-70b-versatile", groq_api_key=groq_key, temperature=temperature, max_tokens=max_tokens)
+            res = fallback.invoke(prompt)
+            if res and hasattr(res, "content") and res.content:
+                return res.content
+        except Exception as e:
+            print(f"  [safe_llm_invoke] Groq fallback failed: {e}")
+
+    openai_key = os.getenv("OPENAI_API_KEY")
+    if openai_key:
+        try:
+            from langchain_openai import ChatOpenAI
+            fallback = ChatOpenAI(model="gpt-4o-mini", api_key=openai_key, temperature=temperature, max_tokens=max_tokens)
+            res = fallback.invoke(prompt)
+            if res and hasattr(res, "content") and res.content:
+                return res.content
+        except Exception as e:
+            print(f"  [safe_llm_invoke] OpenAI fallback failed: {e}")
+
+    return ""

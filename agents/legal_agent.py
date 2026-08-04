@@ -18,7 +18,7 @@ from langgraph.prebuilt import create_react_agent
 
 from agents.llm_factory import get_llm
 from agents.state import TriSevaState
-from agents.utils import parse_agent_json, initialize_telemetry, get_document_context
+from agents.utils import parse_agent_json, initialize_telemetry, get_document_context, safe_llm_invoke
 from tools.rag_tool import retrieve
 from tools.search_tool import web_search_tool
 from tools.calculator_tool import calculator_tool
@@ -226,8 +226,7 @@ You MUST respond ONLY with a JSON object containing exactly two fields:
 
 Do not include any text outside the JSON object."""
             
-            response = llm.invoke(prompt)
-            raw_answer = response.content
+            raw_answer = safe_llm_invoke(llm, prompt)
             print(f"  [Legal Agent Direct] Done ({len(raw_answer)} chars)")
             
             default_disclaimer = "⚖️ This information is for guidance only. Consult a legal professional for specific advice."
