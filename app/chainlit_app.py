@@ -1,18 +1,14 @@
 import warnings
 warnings.filterwarnings("ignore")
 
-# Monkeypatch FastAPI openapi security scheme to prevent AttributeError in Chainlit with FastAPI>=0.115
+# Monkeypatch Chainlit's OAuth2PasswordBearerWithCookie for compatibility with FastAPI >= 0.111.0
 try:
-    import fastapi.openapi.utils as fou
-    _orig_get_openapi_security_definitions = fou.get_openapi_security_definitions
-    def _patched_get_openapi_security_definitions(flat_dependant, security_definitions):
-        try:
-            return _orig_get_openapi_security_definitions(flat_dependant, security_definitions)
-        except AttributeError as e:
-            if "model" in str(e):
-                return {}, []
-            raise e
-    fou.get_openapi_security_definitions = _patched_get_openapi_security_definitions
+    import chainlit.auth.cookie as c_auth
+    from fastapi.openapi.models import OAuth2 as OAuth2Model, OAuthFlows as OAuthFlowsModel, OAuthFlowPassword
+    if hasattr(c_auth, "OAuth2PasswordBearerWithCookie") and not hasattr(c_auth.OAuth2PasswordBearerWithCookie, "model"):
+        c_auth.OAuth2PasswordBearerWithCookie.model = OAuth2Model(
+            flows=OAuthFlowsModel(password=OAuthFlowPassword(tokenUrl="token"))
+        )
 except Exception:
     pass
 
