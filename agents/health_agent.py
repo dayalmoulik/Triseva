@@ -129,7 +129,8 @@ Analyze the provided document context (e.g., doctor prescription, lab report, or
 User Query: {state['user_query']}
 
 Guidelines:
-- Ground your answer strictly in the provided [Document Context].
+- If the provided [Document Context] is unrelated to healthcare (e.g. Soil Health Card, land document, or non-medical form), IGNORE the document context completely and answer the user's health question directly, accurately, and empathetically using standard clinical reference ranges.
+- Otherwise, ground your answer strictly in the provided medical document context.
 - Output a structured summary adhering strictly to this markdown structure (place EVERY item on a NEW LINE with a bullet dash `- `):
   1. **Patient & Clinic Info**: Clinic/hospital header, patient name, age/gender, and date (if present). If no doctor name is typed/printed on the prescription (only a signature appears), write "Doctor Name: Not explicitly printed (Signature present)". Do NOT invent doctor names.
   2. **Prescribed Medications**: Place EACH prescribed drug on its OWN NEW LINE starting with `- **[Medication Name]**:`

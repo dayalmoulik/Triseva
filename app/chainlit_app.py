@@ -268,7 +268,7 @@ async def on_message(message: cl.Message):
     session_id = cl.user_session.get("session_id")
     query      = message.content.strip()
 
-    # Extract uploaded file path or reuse active session image
+    # Extract uploaded file path or intelligently reuse session image for follow-up document queries
     image_path = None
     if message.elements:
         for element in message.elements:
@@ -277,8 +277,13 @@ async def on_message(message: cl.Message):
                 cl.user_session.set("last_image_path", image_path)
                 break
     else:
-        # Reuse active uploaded image from previous turn in this session
-        image_path = cl.user_session.get("last_image_path")
+        # Only reuse active session image if the query asks about the image/document or if query is blank
+        last_path = cl.user_session.get("last_image_path")
+        if last_path:
+            query_low = query.lower()
+            referential_keywords = ["it", "this", "image", "document", "prescription", "card", "report", "summarize", "dosage", "explain", "scan", "photo", "what about"]
+            if not query_low or any(k in query_low for k in referential_keywords):
+                image_path = last_path
 
     if not query:
         if image_path:
