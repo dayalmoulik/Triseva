@@ -152,7 +152,19 @@ def agri_agent_node(state: TriSevaState) -> dict:
     try:
         llm = get_llm(temperature=0.3, max_tokens=1024)
 
+        image_path = state.get("image_path")
         doc_context = get_document_context(state)
+
+        if not doc_context and image_path:
+            return {
+                "draft_answer": "I was unable to extract readable text from the uploaded document image. Please ensure the document photo or scan is clear, well-lit, and legible, or try re-uploading a higher resolution image.",
+                "retrieved_chunks": [],
+                "sources": [],
+                "quiz": state.get("quiz") or [],
+                "domain_disclaimer": "🌾 Always verify schemes and advisories on official government portals (e.g., pmkisan.gov.in) and follow local agriculture officer guidance.",
+                "telemetry": telemetry,
+            }
+
         if doc_context:
             # Direct LLM call to prevent tool-binding and avoid 403/Forbidden issues on model endpoints
             prompt = f"""You are TriSeva's Agriculture Assistant for India.
