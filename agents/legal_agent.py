@@ -200,18 +200,17 @@ User Query: {state['user_query']}
 
 Guidelines:
 - Ground your answer strictly in the provided [Document Context].
-- Output a structured summary adhering strictly to this markdown structure (for any summarization, analysis, transcription, or explanation request):
+- Output a structured summary adhering strictly to this markdown structure (do NOT use pipe tables, use clear bulleted statements):
   1. **Document / Scheme Overview**: Official title, department/ministry, target beneficiary group, and application deadlines (if present).
-  2. **Key Scheme Provisions & Benefits Table**: Create a clean GitHub Markdown table with these exact headers:
-     | Feature / Category | Eligibility Rule | Benefit Amount / Entitlement | Required Verification |
-     | :--- | :--- | :--- | :--- |
-     Fill in all specific income caps, landholding limits, financial assistance amounts, and verification procedures.
+  2. **Key Scheme Provisions & Benefits**: Present each provision as a clear, readable bullet statement:
+     - **[Feature/Category]**: Eligibility Rule | Benefit Amount / Entitlement | Required Verification procedure.
+     Summarize all specific income caps, landholding limits, financial assistance amounts, and verification rules without markdown table pipes.
   3. **Application Steps & Required Documents**: Bullet points of necessary documents (Aadhaar, Ration Card, Bank Passbook) and submission steps.
 - CRITICAL PARAMETRIC GUARDRAIL: If the provided [Document Context] is empty or unreadable and does not contain valid text, return a JSON object where "factual_response" is exactly "I cannot find the answer to this in the available database." and "caution_note" contains your standard disclaimer.
 
 CRITICAL FORMATTING INSTRUCTION:
 You MUST respond ONLY with a JSON object containing exactly two fields:
-1. "factual_response": A clear, structured legal/scheme summary containing the Markdown table and application steps grounded in the document context. Do NOT include 'Source:' or 'स्रोत:' inline citations.
+1. "factual_response": A clear, structured legal/scheme summary containing bulleted provision statements and application steps grounded in the document context. Do NOT use pipe tables. Do NOT include 'Source:' or 'स्रोत:' inline citations.
 2. "caution_note": A safety note/disclaimer (e.g., 'This information is for guidance only. Consult a legal professional for specific advice.').
 
 Do not include any text outside the JSON object."""

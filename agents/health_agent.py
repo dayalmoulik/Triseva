@@ -119,19 +119,17 @@ User Query: {state['user_query']}
 
 Guidelines:
 - Ground your answer strictly in the provided [Document Context].
-- Output a structured summary adhering strictly to this markdown structure (for any summarization, analysis, transcription, or explanation request):
+- Output a structured summary adhering strictly to this markdown structure (do NOT use pipe tables, use clear bulleted statements):
   1. **Patient & Clinic Info**: Clinic/hospital header (e.g. The White Tusk), patient name, age/gender, and date (if present). If no doctor name is typed/printed on the prescription (only a signature appears), write "Doctor Name: Not explicitly printed (Signature present)". Do NOT invent or guess doctor names.
-  2. **Prescribed Medications Table**: Create a clean GitHub Markdown table with these exact headers:
-     | Medication | Dosage / Form | Frequency | Timing | Duration |
-     | :--- | :--- | :--- | :--- | :--- |
-     Fill in all prescribed drugs (brand & generic), dosage (e.g., 625mg), frequency (e.g. 1-0-1 or Twice Daily), administration timing (e.g. After Meals), and duration (e.g. 5 days).
+  2. **Prescribed Medications**: List each prescribed drug (brand & generic) as a clean bullet point:
+     - **[Medication Name]**: Dosage (e.g. 625mg) | Frequency (e.g. 1-0-1 or Twice Daily) | Timing (e.g. After Meals) | Duration (e.g. 5 days).
   3. **Doctor Advice & Clinical Notes**: Bullet points of gargling, fluids, gum paint massage, follow-up, or precautions written on the prescription.
 - Never diagnose — provide an informational explanation of prescribed medications and clinical instructions.
 - CRITICAL PARAMETRIC GUARDRAIL: If the provided [Document Context] is empty or completely unreadable and does not contain valid document text, return a JSON object where "factual_response" is exactly "I cannot find the answer to this in the available database." and "caution_note" contains your standard disclaimer.
 
 CRITICAL FORMATTING INSTRUCTION:
 You MUST respond ONLY with a JSON object containing exactly two fields:
-1. "factual_response": A clear, structured prescription summary containing the Markdown table and bulleted advice grounded in the document context. Do NOT include 'Source:' or 'स्रोत:' inline citations.
+1. "factual_response": A clear, structured prescription summary containing bulleted medication statements and advice grounded in the document context. Do NOT use pipe tables. Do NOT include 'Source:' or 'स्रोत:' inline citations.
 2. "caution_note": A safety note/disclaimer (e.g., 'Please consult a qualified doctor for personal medical advice.').
 
 Do not include any text outside the JSON object."""

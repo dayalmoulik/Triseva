@@ -165,19 +165,18 @@ User Query: {state['user_query']}
 
 Guidelines:
 - Ground your answer strictly in the provided [Document Context].
-- Output a structured summary adhering strictly to this markdown structure (for any summarization, analysis, transcription, or explanation request):
-  1. **Farmer & Soil Card Details**: Farmer Name, Village/District, Sample ID, and Date (if present).
-  2. **Soil Parameter & Nutrient Table**: Create a clean GitHub Markdown table with these exact headers:
-     | Nutrient / Parameter | Value / Reading | Status Level | Recommended Action |
-     | :--- | :--- | :--- | :--- |
-     Fill in all available readings (pH, EC, Nitrogen, Phosphorus, Potassium, Organic Carbon, Zinc, Boron, etc.), status (High/Medium/Low), and recommended action.
-  3. **Fertilizer & Crop Recommendations**: Actionable dosage recommendations per acre (e.g. Urea, DAP, SSP, Zinc Sulphate) and crop advisories.
+- Output a structured summary adhering strictly to this markdown structure (do NOT use pipe tables, use clear bulleted statements):
+  1. **Farmer & Soil Card Details**: Farmer Name, Village/District, Location, Soil Type/Texture, and Crop info.
+  2. **Soil Health Indicators & Nutrient Statements**: Present each parameter as a clear, readable bullet statement:
+     - **[Nutrient/Parameter Name]**: Value / Reading | Status Level (High/Medium/Low) | Recommended Action (e.g. Gypsum or FYM application).
+     Summarize all parameters (pH, EC, Organic Carbon, Nitrogen, Phosphorus, Potassium, Iron, Zinc, Copper, etc.) in clean bulleted sentences without markdown table pipes.
+  3. **Fertilizer & Crop Recommendations**: Actionable dosage recommendations per acre/hectare (e.g. Urea, DAP, SSP, FYM) and crop advisories.
 - Avoid unsafe chemical advice; recommend label and local agriculture officer guidance.
 - CRITICAL PARAMETRIC GUARDRAIL: If the provided [Document Context] is empty or unreadable and does not contain valid text, return a JSON object where "factual_response" is exactly "I cannot find the answer to this in the available database." and "caution_note" contains your standard disclaimer.
 
 CRITICAL FORMATTING INSTRUCTION:
 You MUST respond ONLY with a JSON object containing exactly two fields:
-1. "factual_response": A clear, structured Soil Health Card summary containing the Markdown table and actionable advice grounded in the document context. Do NOT include 'Source:' or 'स्रोत:' inline citations.
+1. "factual_response": A clear, structured Soil Health Card summary containing bulleted parameter statements and actionable advice grounded in the document context. Do NOT use pipe tables. Do NOT include 'Source:' or 'स्रोत:' inline citations.
 2. "caution_note": A safety note/caution note (e.g., 'Always verify schemes on official government portals and follow local agriculture officer guidance.').
 
 Do not include any text outside the JSON object."""
