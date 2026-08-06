@@ -146,7 +146,10 @@ def get_data_layer():
     """
     db_path = os.path.abspath("chainlit.db")
     conn_str = f"sqlite+aiosqlite:///{db_path}"
-    return SQLAlchemyDataLayer(conn_string=conn_str)
+    try:
+        return SQLAlchemyDataLayer(conninfo=conn_str)
+    except TypeError:
+        return SQLAlchemyDataLayer(conn_string=conn_str)
 
 # ── Authentication Callback ──────────────────────────────────────────────────
 @cl.password_auth_callback
