@@ -1,3 +1,11 @@
+"""
+TriSeva Intent Classifier & Domain Orchestrator Node.
+
+Implements high-accuracy multi-class domain routing (Healthcare, Legal/Schemes, Agriculture)
+using a fine-tuned local DistilBERT sequence classifier (`maddy0494/triseva-router`), deterministic
+keyword override patterns, user manual overrides, and secondary LLM/Regex fallback routing.
+"""
+
 from dotenv import load_dotenv
 load_dotenv()
 
@@ -16,7 +24,7 @@ from transformers import AutoTokenizer, AutoModelForSequenceClassification
 import torch
 import torch.nn.functional as F
 
-# ── Local / Remote Classifier loading ──────────────────────────────────────────
+# ── Local / Remote Classifier Loading ──────────────────────────────────────────
 MODEL_PATH = "data/models/domain_router"
 MODEL_HUB_ID = "maddy0494/triseva-router"
 _tokenizer = None
@@ -62,7 +70,14 @@ router_chain = None
 
 
 def regex_keyword_router(query: str) -> str:
-    """Keyword-based regex fallback routing when both local model and LLM fail."""
+    """Keyword-based regex fallback routing when both local model and LLM fail.
+
+    Args:
+        query (str): Input query text.
+
+    Returns:
+        str: Classified domain name ('health', 'legal', or 'agriculture').
+    """
     import re
     query_lower = query.lower()
     
@@ -96,11 +111,23 @@ def regex_keyword_router(query: str) -> str:
     return "health"
 
 
-# ── Orchestrator node ─────────────────────────────────────────────────────────
 def orchestrator_node(state: TriSevaState) -> dict:
-    """Classify the user query into a domain and set routing."""
+    """Classifies citizen query intent and determines multi-agent routing direction.
 
-    # On retry, refine the query with critic feedback
+    Combines user query text with extracted document image OCR text (if present) and evaluates
+    classification sequentially via:
+    1. High-precision deterministic domain keyword overrides (1.0 confidence).
+    2. Explicit user domain selection override.
+    3. Fine-tuned DistilBERT sequence classification (`maddy0494/triseva-router`).
+    4. Secondary cloud LLM zero-shot classification (Groq Llama-3.1-8b).
+    5. Fallback keyword-density regex matcher.
+
+    Args:
+        state (TriSevaState): Current multi-agent pipeline state.
+
+    Returns:
+        dict: State update dictionary containing 'domain', 'domain_confidence', 'retry_count', and 'telemetry'.
+    """
     query = state["user_query"]
     image_text = state.get("image_text") or ""
     retry_count = state.get("retry_count", 0)
@@ -239,9 +266,15 @@ def orchestrator_node(state: TriSevaState) -> dict:
     }
 
 
-# ── Routing function ──────────────────────────────────────────────────────────
 def route_to_agent(state: TriSevaState) -> str:
-    """Return routing key for conditional edge."""
+    """Returns conditional edge routing key for LangGraph domain execution.
+
+    Args:
+        state (TriSevaState): Current state containing classified domain.
+
+    Returns:
+        str: Edge name ('health', 'legal', or 'agriculture').
+    """
     domain = state.get("domain", "health")
     if domain in ["health", "legal", "agriculture"]:
         return domain

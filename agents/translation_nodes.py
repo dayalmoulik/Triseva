@@ -1,13 +1,30 @@
+"""
+TriSeva Translation Pipeline Nodes.
+
+Provides automated pre-processing translation (Indic/Hinglish to English) and post-processing
+back-translation (English to Hindi Devanagari or Latin Hinglish) maintaining script consistency
+across query execution, answer generation, and interactive quiz rendering.
+"""
+
 from utils.translation_helper import is_hindi_or_hinglish, translate
 import re
 from agents.state import TriSevaState
 
 def translation_pre_node(state: TriSevaState) -> TriSevaState:
-    """Pre-processing node: Translates user query (and image text if present) 
-    to English if they are Hindi or Hinglish."""
+    """Pre-processing node: Translates user query (and OCR image text) to English if Hindi/Hinglish.
+
+    Detects script type (Devanagari vs Latin Hinglish), stores original input details,
+    and updates `user_query` to English for unified vector search and agent reasoning.
+
+    Args:
+        state (TriSevaState): Current state containing raw user query and optional image text.
+
+    Returns:
+        TriSevaState: State updated with translated `user_query` and script metadata.
+    """
     query = state.get("user_query", "")
     
-    # Detect the script used (Devanagari vs Latin)
+    # Detect script type (Devanagari vs Latin Hinglish)
     is_devanagari = bool(re.search(r"[\u0900-\u097f]", query))
     script_hint = "devanagari" if is_devanagari else "latin"
     state["script_hint"] = script_hint
@@ -26,7 +43,7 @@ def translation_pre_node(state: TriSevaState) -> TriSevaState:
         state["original_language"] = "en-IN"
         state["original_query"] = query
 
-    # Also check and translate extracted image text if present and in Hindi
+    # Also translate extracted image text if present and in Hindi
     image_text = state.get("image_text")
     if image_text and is_hindi_or_hinglish(image_text):
         print(f"  [Translation Pre] Hindi text in uploaded image detected. Translating to English...")
@@ -35,9 +52,18 @@ def translation_pre_node(state: TriSevaState) -> TriSevaState:
 
     return state
 
+
 def translation_post_node(state: TriSevaState) -> TriSevaState:
-    """Post-processing node: Translates final answers (and draft answers) 
-    back to Hinglish/Hindi if the original query was Hindi or Hinglish."""
+    """Post-processing node: Translates final approved answers and quizzes back to input language.
+
+    Restores Devanagari Hindi or Latin Hinglish script based on `script_hint` recorded during pre-translation.
+
+    Args:
+        state (TriSevaState): Current state containing English generated final answer and quiz.
+
+    Returns:
+        TriSevaState: State updated with back-translated `final_answer` and `quiz`.
+    """
     original_lang = state.get("original_language", "en-IN")
     script_hint = state.get("script_hint", "latin")
     

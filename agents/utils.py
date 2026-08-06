@@ -1,18 +1,44 @@
+"""
+TriSeva Agent Utility Functions & Helper Modules.
+
+Provides string cleaning, agent JSON response parsing, source relevance filtering,
+official government deep-link mapping, telemetry initialization, and resilient primary LLM invocation fallbacks.
+"""
+
 import json
 import re
-from typing import Optional, Tuple
+import os
+from typing import Optional, Tuple, List, Dict
+
 
 def clean_inline_sources(text: str) -> str:
-    """Strips inline 'Source: xyz' or 'स्रोत: xyz' or '(Source: xyz)' from the answer text."""
+    """Strips inline 'Source: xyz' or 'स्रोत: xyz' citations from generated text.
+
+    Args:
+        text (str): Input text containing potential inline citations.
+
+    Returns:
+        str: Cleaned text string without inline citation strings.
+    """
     if not text:
         return text
-    # Strip inline Source / स्रोत citations appended to sentences
     text = re.sub(r'(?i)\n*\s*(?:source|sources|स्रोत|स्रोतः)\s*:.*$', '', text)
     text = re.sub(r'(?i)\s*\((?:source|sources|स्रोत|स्रोतः)\s*:.*?\)', '', text)
     return text.strip()
 
+
 def parse_agent_json(text: str, default_disclaimer: str) -> Tuple[str, str]:
-    """Parse JSON output containing 'factual_response' and 'caution_note' robustly."""
+    """Parses JSON agent responses containing 'factual_response' and 'caution_note'.
+
+    Attempts JSON deserialization, markdown code fence stripping, and multiline regex matching.
+
+    Args:
+        text (str): Raw string output from LLM.
+        default_disclaimer (str): Fallback safety disclaimer if none parsed.
+
+    Returns:
+        Tuple[str, str]: Pair of (factual_response, caution_note).
+    """
     if not text:
         return "", default_disclaimer
 
@@ -37,7 +63,7 @@ def parse_agent_json(text: str, default_disclaimer: str) -> Tuple[str, str]:
             end = text_clean.rfind("}") + 1
             text_clean = text_clean[start:end]
 
-    # 2. Permissive json load with strict=False (handles unescaped control chars/newlines inside strings)
+    # 2. Permissive json load with strict=False
     try:
         data = json.loads(text_clean, strict=False)
         factual = data.get("factual_response", "").strip()
@@ -74,15 +100,23 @@ def parse_agent_json(text: str, default_disclaimer: str) -> Tuple[str, str]:
     if factual.strip():
         return clean_inline_sources(factual.strip()), caution.strip() or default_disclaimer
 
-    # 4. Cleanup JSON syntax wrapper if regex fails so raw JSON brackets are never displayed to users
+    # 4. Cleanup JSON syntax wrapper if regex fails
     cleaned_fallback = re.sub(r'^\s*\{\s*"factual_response"\s*:\s*"?', '', text_clean, flags=re.IGNORECASE)
     cleaned_fallback = re.sub(r'"\s*,\s*"caution_note"\s*:.*$', '', cleaned_fallback, flags=re.DOTALL | re.IGNORECASE)
     cleaned_fallback = re.sub(r'"\s*\}\s*$', '', cleaned_fallback).strip()
 
     return clean_inline_sources(cleaned_fallback), default_disclaimer
 
+
 def initialize_telemetry(state: dict) -> dict:
-    """Initialize or load the telemetry metrics dictionary from State Graph state."""
+    """Initializes or loads state telemetry dictionary.
+
+    Args:
+        state (dict): Pipeline state dictionary.
+
+    Returns:
+        dict: Populated telemetry dictionary.
+    """
     return state.get("telemetry") or {
         "routing_hops": [],
         "retries": 0,
@@ -93,8 +127,17 @@ def initialize_telemetry(state: dict) -> dict:
         "is_fallback_retrieval": False,
     }
 
+
 def get_document_context(state: dict, max_chars: int = 50000) -> Optional[str]:
-    """Retrieve and defensively slice the uploaded document text if present."""
+    """Retrieves and defensively slices OCR document text if present in state.
+
+    Args:
+        state (dict): Pipeline state dictionary.
+        max_chars (int, optional): Maximum character slice length. Defaults to 50000.
+
+    Returns:
+        Optional[str]: Extracted document text string or None.
+    """
     image_text = state.get("image_text")
     if image_text:
         return image_text[:max_chars]
@@ -102,7 +145,14 @@ def get_document_context(state: dict, max_chars: int = 50000) -> Optional[str]:
 
 
 def is_answer_not_found(answer_text: str) -> bool:
-    """Check if the answer indicates that information was not found or failed."""
+    """Checks if generated answer text represents a fallback 'not found' or error message.
+
+    Args:
+        answer_text (str): Answer string to check.
+
+    Returns:
+        bool: True if answer indicates missing data or failure, False otherwise.
+    """
     if not answer_text or not answer_text.strip():
         return True
 
@@ -132,10 +182,17 @@ def is_answer_not_found(answer_text: str) -> bool:
 
 
 def filter_representative_sources(answer_text: str, sources: list, retrieved_chunks: list = None) -> list:
-    """
-    Ensures retrieved sources are non-empty, representative, and relevant to the generated answer.
-    Filters out system fallbacks, low-relevance noise, and sources not represented in the answer.
-    Returns an empty list if the answer is a fallback 'not found' response.
+    """Filters retrieved sources to retain relevant items with positive confidence scores.
+
+    Filters out system fallbacks, noise, sources with score <= 0, and items unrepresented in answer.
+
+    Args:
+        answer_text (str): Final generated answer text.
+        sources (list): Raw list of source dictionaries or strings.
+        retrieved_chunks (list, optional): Raw retrieved text passages. Defaults to None.
+
+    Returns:
+        list: Filtered list of representative source items.
     """
     if not sources or is_answer_not_found(answer_text):
         return []
@@ -176,12 +233,10 @@ def filter_representative_sources(answer_text: str, sources: list, retrieved_chu
             seen_names.add(source_name)
             continue
 
-        # 2. Document / PDF Sources: Check if filename/basename or key terms overlap with answer_text
-        import os
+        # 2. Document / PDF Sources: Check key word overlap with answer_text
         base_name = os.path.basename(source_name).lower()
         clean_base = base_name.replace(".pdf", "").replace(".txt", "").replace(".png", "").replace(".jpg", "").replace("_", " ").replace("-", " ")
 
-        # Extract key words (>3 chars) from the clean base name
         key_words = [w for w in clean_base.split() if len(w) > 3 and w not in ["data", "raw", "pdfs", "health", "legal", "agriculture", "report"]]
 
         is_relevant = False
@@ -200,7 +255,7 @@ def filter_representative_sources(answer_text: str, sources: list, retrieved_chu
             representative_sources.append(s if isinstance(s, dict) else {"source": source_name, "score": score})
             seen_names.add(source_name)
 
-    # Fallback to top sources if no specific key words matched but valid sources exist
+    # Fallback to top sources if no specific key words matched
     if not representative_sources and sources:
         for s in sources:
             name = s.get("source") if isinstance(s, dict) else str(s)
@@ -251,13 +306,19 @@ SPECIFIC_SOURCE_MAP = {
 }
 
 def resolve_web_url(source_name: str) -> Optional[Tuple[str, str]]:
-    """Maps local vector DB document paths or web URLs to specific official web links and descriptive titles."""
+    """Maps local vector DB document paths to official web links and descriptive titles.
+
+    Args:
+        source_name (str): Document file path or web URL string.
+
+    Returns:
+        Optional[Tuple[str, str]]: Pair of (title, url) or None if unmapped.
+    """
     if not source_name:
         return None
     source_lower = source_name.strip().lower()
 
     if source_lower.startswith("http://") or source_lower.startswith("https://"):
-        # Infer specific title from domain if generic
         if "indiacode.nic.in" in source_lower:
             title = "India Code Official Legislative Repository"
         elif "nrega" in source_lower:
@@ -287,7 +348,15 @@ def resolve_web_url(source_name: str) -> Optional[Tuple[str, str]]:
     return None
 
 def append_source_links(answer_text: str, sources: list) -> str:
-    """Resolves specific reference URLs from sources list and appends clickable markdown links in a separate section."""
+    """Appends clickable markdown reference links to answer text.
+
+    Args:
+        answer_text (str): Main answer content text.
+        sources (list): List of representative sources.
+
+    Returns:
+        str: Answer text appended with reference links block.
+    """
     clean_ans = clean_inline_sources(answer_text)
     if not sources or is_answer_not_found(clean_ans):
         return clean_ans
@@ -317,8 +386,17 @@ def append_source_links(answer_text: str, sources: list) -> str:
     return clean_ans
 
 def safe_llm_invoke(llm, prompt: str, temperature: float = 0.3, max_tokens: int = 1024) -> str:
-    """Invokes primary LLM and automatically fails over to Groq/OpenAI/Claude if primary returns empty string."""
-    import os
+    """Invokes primary LLM with automated secondary cloud failover on empty model output.
+
+    Args:
+        llm: Primary LLM model instance.
+        prompt (str): Prompt string to invoke.
+        temperature (float, optional): Generation temperature. Defaults to 0.3.
+        max_tokens (int, optional): Maximum tokens limit. Defaults to 1024.
+
+    Returns:
+        str: Non-empty generated response text string.
+    """
     try:
         res = llm.invoke(prompt)
         content = res.content if res and hasattr(res, "content") else str(res)

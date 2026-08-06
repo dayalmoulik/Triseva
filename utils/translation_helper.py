@@ -1,3 +1,11 @@
+"""
+TriSeva Translation Helper Utilities & Cache Management Module.
+
+Provides fast Indic-to-English query pre-translation and English-to-Indic back-translation
+using Sarvam AI REST translation API, fallback Sarvam-105B LLM prompt translation,
+disk-based MD5 translation caching (`data/translation_cache.json`), and script detection (Devanagari vs Latin Hinglish).
+"""
+
 import os
 import json
 import requests
@@ -14,19 +22,34 @@ _cache = None
 _llm = None
 
 def _get_llm():
+    """Lazy initializes translation LLM instance with fast timeout.
+
+    Returns:
+        BaseChatModel: Configured translation model instance.
+    """
     global _llm
-    if _llm is None and SARVAM_API_KEY:
-        _llm = ChatOpenAI(
-            model="sarvam-105b",
-            openai_api_key=SARVAM_API_KEY,
-            openai_api_base="https://api.sarvam.ai/v1",
-            temperature=0.0,
-            max_tokens=1536,
-            timeout=45,
-        )
+    if _llm is None:
+        try:
+            from agents.llm_factory import get_llm
+            _llm = get_llm(temperature=0.0, max_tokens=512, timeout=8)
+        except Exception:
+            if SARVAM_API_KEY:
+                _llm = ChatOpenAI(
+                    model="sarvam-105b",
+                    openai_api_key=SARVAM_API_KEY,
+                    openai_api_base="https://api.sarvam.ai/v1",
+                    temperature=0.0,
+                    max_tokens=512,
+                    timeout=8,
+                )
     return _llm
 
 def _load_cache():
+    """Loads translation key-value disk cache dictionary.
+
+    Returns:
+        dict: In-memory translation cache dictionary.
+    """
     global _cache
     if _cache is None:
         os.makedirs(os.path.dirname(CACHE_FILE), exist_ok=True)
@@ -42,6 +65,7 @@ def _load_cache():
     return _cache
 
 def _save_cache():
+    """Persists in-memory translation cache to JSON file on disk."""
     global _cache
     if _cache is not None:
         try:
@@ -51,7 +75,14 @@ def _save_cache():
             print(f"[Translation Cache] Error saving cache file: {e}")
 
 def is_hindi_or_hinglish(text: str) -> bool:
-    """Detect if the text is Hindi (contains Devanagari) or Hinglish (code-mixed)."""
+    """Detects if input text is in Devanagari Hindi or Latin Hinglish script.
+
+    Args:
+        text (str): Input text string.
+
+    Returns:
+        bool: True if Devanagari characters or Hinglish keywords are detected, False otherwise.
+    """
     if not text or not text.strip():
         return False
         
@@ -59,7 +90,7 @@ def is_hindi_or_hinglish(text: str) -> bool:
     if re.search(r"[\u0900-\u097f]", text):
         return True
         
-    # 2. Unambiguous Hinglish keywords (excluding common English words like 'is', 'to', 'me', 'he', 'the', 'crop')
+    # 2. Unambiguous Hinglish keywords
     hinglish_keywords = {
         "kya", "hai", "hain", "ko", "se", "ka", "ki", "ke", "mein", 
         "par", "bhi", "aur", "ya", "tha", "thi", "theh", "hoon",
@@ -78,8 +109,17 @@ def is_hindi_or_hinglish(text: str) -> bool:
     return False
 
 def translate(text: str, source_lang: str, target_lang: str, script_hint: str = "latin") -> str:
-    """Translate text using Sarvam's REST translation API (for hi->en and en->devanagari),
-    falling back to Sarvam-105B LLM prompts for natural Latin Hinglish code-mixing."""
+    """Translates text between Indic/English using Sarvam REST API and LLM fallbacks.
+
+    Args:
+        text (str): String to translate.
+        source_lang (str): BCP-47 source language code (e.g. 'hi-IN', 'en-IN').
+        target_lang (str): BCP-47 target language code (e.g. 'en-IN', 'hi-IN').
+        script_hint (str, optional): Target script style ('devanagari' vs 'latin'). Defaults to "latin".
+
+    Returns:
+        str: Translated text string.
+    """
     if not text or not text.strip():
         return text
         
@@ -87,7 +127,6 @@ def translate(text: str, source_lang: str, target_lang: str, script_hint: str = 
         return text
 
     cache = _load_cache()
-    # Cache key includes target script style hint
     cache_key = f"{text.strip()}|||{source_lang}|||{target_lang}|||{script_hint}"
     
     if cache_key in cache:
@@ -99,12 +138,10 @@ def translate(text: str, source_lang: str, target_lang: str, script_hint: str = 
     rest_tgt = None
     
     if target_lang == "en-IN":
-        # Translating Hinglish/Hindi to English
         use_rest = True
         rest_src = "hi-IN"
         rest_tgt = "en-IN"
     elif target_lang == "hi-IN" and script_hint == "devanagari":
-        # Translating English to Devanagari Hindi
         use_rest = True
         rest_src = "en-IN"
         rest_tgt = "hi-IN"
@@ -122,7 +159,7 @@ def translate(text: str, source_lang: str, target_lang: str, script_hint: str = 
                 "target_language_code": rest_tgt
             }
             print(f"  [Translation REST] Sending request to {url} ({rest_src} -> {rest_tgt})...")
-            resp = requests.post(url, json=payload, headers=headers, timeout=10)
+            resp = requests.post(url, json=payload, headers=headers, timeout=3.5)
             if resp.status_code == 200:
                 translated_text = resp.json().get("translated_text", "").strip()
                 if translated_text:
@@ -140,9 +177,7 @@ def translate(text: str, source_lang: str, target_lang: str, script_hint: str = 
         print("[Translation LLM] Warning: LLM not initialized. Returning original text.")
         return text
 
-    # Formulate prompts dynamically for natural Hinglish & Safety inclusion
     if target_lang == "en-IN":
-        # Translate Hindi/Hinglish to English
         prompt = f"""You are a professional translator. Translate the following text to standard English. Keep the meaning and domain terms completely accurate.
 
 Text:
@@ -150,7 +185,6 @@ Text:
 
 English Translation:"""
     else:
-        # Translate English to Hindi/Hinglish
         if script_hint == "devanagari":
             prompt = f"""You are an expert translator specializing in natural code-mixed Hinglish.
 Translate the following English text to Hinglish, written in the Devanagari script.
@@ -188,7 +222,6 @@ Latin Hinglish Translation:"""
         res = llm.invoke(prompt)
         translated_text = res.content.strip()
         
-        # Clean up any potential markdown wrap by the LLM
         if translated_text.startswith("```"):
             lines = translated_text.split("\n")
             if len(lines) > 2:

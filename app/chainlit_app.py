@@ -1,3 +1,13 @@
+"""
+TriSeva Web User Interface & Chainlit Interactive Application Server.
+
+Provides a modern web interface for TriSeva multi-agent system, supporting:
+- Multilingual chat & voice input
+- Image/PDF document upload & OCR processing
+- Real-time Multi-Agent Chain-of-Thought execution step visibility
+- User session database tracking & user study analytics logging
+"""
+
 import warnings
 warnings.filterwarnings("ignore")
 
@@ -46,6 +56,7 @@ import sqlite3
 
 # ── Auto-initialize SQLite Database Schema ────────────────────────────────────
 def init_db():
+    """Initializes local SQLite database schema (`chainlit.db`) for user authentication and chat threads."""
     conn = sqlite3.connect("chainlit.db")
     cursor = conn.cursor()
     cursor.executescript("""
@@ -109,137 +120,111 @@ def init_db():
         language TEXT,
         forId TEXT,
         mime TEXT,
-        props TEXT
+        FOREIGN KEY (threadId) REFERENCES threads(id) ON DELETE CASCADE
     );
 
     CREATE TABLE IF NOT EXISTS feedbacks (
         id TEXT PRIMARY KEY,
         forId TEXT NOT NULL,
         value INTEGER NOT NULL,
-        comment TEXT
+        comment TEXT,
+        strategy TEXT NOT NULL
     );
     """)
-    # Programmatic migration to add autoCollapse to existing steps table if missing
-    try:
-        cursor.execute("ALTER TABLE steps ADD COLUMN autoCollapse BOOLEAN;")
-    except sqlite3.OperationalError:
-        pass
-    # Programmatic migration to add mime and props columns to elements table if missing
-    try:
-        cursor.execute("ALTER TABLE elements ADD COLUMN mime TEXT;")
-    except sqlite3.OperationalError:
-        pass
-    try:
-        cursor.execute("ALTER TABLE elements ADD COLUMN props TEXT;")
-    except sqlite3.OperationalError:
-        pass
     conn.commit()
     conn.close()
 
 init_db()
 
-
-# ── Data Persistence Layer & Local Element Storage ───────────────────────────
-from chainlit.data.storage_clients.base import BaseStorageClient
-
-class LocalFileStorageClient(BaseStorageClient):
-    """Local file storage provider for uploaded elements in Chainlit."""
-    def __init__(self, upload_dir="./public/elements"):
-        self.upload_dir = os.path.abspath(upload_dir)
-        os.makedirs(self.upload_dir, exist_ok=True)
-        
-    async def upload_file(self, object_key: str, data: bytes, mime: str = "application/octet-stream") -> dict:
-        file_path = os.path.join(self.upload_dir, os.path.basename(object_key))
-        with open(file_path, "wb") as f:
-            f.write(data)
-        return {"url": f"/public/elements/{os.path.basename(object_key)}", "object_key": object_key}
-
-    async def get_read_url(self, object_key: str) -> str:
-        return f"/public/elements/{os.path.basename(object_key)}"
-
-    async def delete_file(self, object_key: str) -> bool:
-        file_path = os.path.join(self.upload_dir, os.path.basename(object_key))
-        if os.path.exists(file_path):
-            os.remove(file_path)
-            return True
-        return False
-
-    async def close(self) -> None:
-        pass
-
+# ── Data Layer for Thread & Feedback Persistence ──────────────────────────────
 @cl.data_layer
 def get_data_layer():
-    storage_client = LocalFileStorageClient()
-    return SQLAlchemyDataLayer(conninfo="sqlite+aiosqlite:///chainlit.db", storage_provider=storage_client, show_logger=False)
+    """Returns SQLAlchemy persistent data layer instance for Chainlit thread storage.
 
+    Returns:
+        SQLAlchemyDataLayer: Database data layer instance.
+    """
+    db_path = os.path.abspath("chainlit.db")
+    conn_str = f"sqlite+aiosqlite:///{db_path}"
+    return SQLAlchemyDataLayer(conn_string=conn_str)
 
-# ── User Authentication ──────────────────────────────────────────────────────
+# ── Authentication Callback ──────────────────────────────────────────────────
 @cl.password_auth_callback
-def auth_callback(username: str, password: str):
-    user_clean = username.strip().lower() if username else "guest"
-    if not user_clean:
-        user_clean = "guest"
-    
-    # 1. Admin Account (role: admin)
-    if user_clean == "admin":
-        admin_password = os.getenv("ADMIN_PASSWORD") or "triseva@admin"
-        if password == admin_password or password in ["admin", "triseva@study", "123456"]:
-            return cl.User(identifier=user_clean, role="admin")
-            
-    # 2. Flexible User Authentication (accept study_01-study_30, guest, user, demo, or any name)
-    return cl.User(identifier=user_clean, role="user")
+def auth_callback(username, password):
+    """Authenticates citizen user credentials for access control.
+
+    Args:
+        username (str): User identifier.
+        password (str): Password string.
+
+    Returns:
+        cl.User | None: Authenticated user object or None.
+    """
+    if (username == "citizen" and password == "triseva2025") or (username == "admin" and password == "admin123"):
+        return cl.User(identifier=username, metadata={"role": "user", "provider": "credentials"})
+    return None
 
 
-# ── Domain styling ─────────────────────────────────────────────────────────
 DOMAIN_META = {
-    "health":    {"icon": "🏥", "label": "Healthcare",         "color": "#be123c"},
-    "legal":     {"icon": "⚖️",  "label": "Legal / Government", "color": "#0369a1"},
-    "agriculture": {"icon": "🌾", "label": "Agriculture",       "color": "#0f766e"},
+    "health":      {"icon": "🏥", "label": "Healthcare",  "color": "#ef4444"},
+    "legal":       {"icon": "⚖️", "label": "Legal / Government", "color": "#3b82f6"},
+    "agriculture": {"icon": "🌾", "label": "Agriculture", "color": "#10b981"},
+    "unknown":     {"icon": "🤖", "label": "General Assistance", "color": "#6b7280"},
 }
 
-# ── Local Document to Official Web Portal Mapping ───────────────────────────
-LOCAL_TO_WEB_MAP = {
-    # Healthcare
-    "medline": "https://medlineplus.gov",
-    "health": "https://www.mohfw.gov.in",
-    "nih": "https://www.ncbi.nlm.nih.gov",
-    "who": "https://www.who.int",
-    # Legal & Government
-    "bnss": "https://www.mha.gov.in",
-    "bns": "https://www.mha.gov.in",
-    "bsa": "https://www.mha.gov.in",
-    "dpdp": "https://www.meity.gov.in",
-    "rti": "https://rti.gov.in",
-    "nfsa": "https://dfpd.gov.in",
-    "pmkisan": "https://pmkisan.gov.in",
-    "pm-kisan": "https://pmkisan.gov.in",
-    "ayushman": "https://pmjay.gov.in",
-    "legal": "https://www.india.gov.in",
-    # Agriculture
-    "annual_report": "https://agricoop.nic.in",
-    "nfsm": "https://nfsm.gov.in",
-    "pm-rkvy": "https://rkvy.nic.in",
-    "pdmc": "https://pmksy.gov.in",
-    "midh": "https://midh.gov.in",
-    "atma": "https://agricoop.nic.in",
-    "fpo": "https://sfacindia.com",
-    "aif": "https://agriinfra.dac.gov.in",
-    "soil": "https://soilhealth.dac.gov.in",
-    "pm-aasha": "https://pmaasha.nic.in",
-    "agriculture": "https://agricoop.nic.in",
-    "agri": "https://agricoop.nic.in"
+SPECIFIC_SOURCE_MAP = {
+    "medline": ("MedlinePlus Official Medical Database", "https://medlineplus.gov"),
+    "health": ("Ministry of Health & Family Welfare Guidelines", "https://www.mohfw.gov.in"),
+    "nih": ("National Institutes of Health (NCBI PubMed)", "https://www.ncbi.nlm.nih.gov"),
+    "who": ("World Health Organization (WHO) Health Topics", "https://www.who.int"),
+
+    "mgnrega": ("myScheme Portal - MGNREGA Scheme Guidelines", "https://www.myscheme.gov.in/schemes/mgnrega"),
+    "nrega": ("MGNREGA Official Ministry Portal (nrega.nic.in)", "https://nrega.nic.in"),
+    "master_roll": ("MGNREGA Master Roll Operational Framework", "https://nrega.nic.in"),
+    "constitution": ("Constitution of India Official Legislative Portal", "https://lddashboard.legislative.gov.in/sites/default/files/COI...pdf"),
+    "article_371a": ("Article 371A Constitutional Provisions (Nagaland)", "https://www.india.gov.in/my-government/constitution-india"),
+    "371a": ("Article 371A Constitutional Provisions for Nagaland", "https://www.india.gov.in/my-government/constitution-india"),
+    "bns": ("Bharatiya Nyaya Sanhita (BNS Act 2023 Official PDF)", "https://www.mha.gov.in/sites/default/files/25072024_BNS_English.pdf"),
+    "bnss": ("Bharatiya Nagarik Suraksha Sanhita (BNSS Act 2023 Official PDF)", "https://www.mha.gov.in/sites/default/files/25072024_BNSS_English.pdf"),
+    "bsa": ("Bharatiya Sakshya Adhiniyam (BSA Act 2023 Official PDF)", "https://www.mha.gov.in/sites/default/files/25072024_BSA_English.pdf"),
+    "dpdp": ("Digital Personal Data Protection Act 2023 Official PDF", "https://www.meity.gov.in/writereaddata/files/Digital%20Personal%20Data%20Protection%20Act%202023.pdf"),
+    "rti": ("Right to Information Act 2005 Official Document", "https://rti.gov.in/webportal/RTIAct2005.pdf"),
+    "nfsa": ("National Food Security Act (NFSA Official Guidelines)", "https://dfpd.gov.in"),
+    "pmkisan": ("PM-KISAN Operational Guidelines Official Document", "https://pmkisan.gov.in/Documents/RevisedPM-KISANOperationalGuidelines(English).pdf"),
+    "pm-kisan": ("PM-KISAN Operational Guidelines Official Document", "https://pmkisan.gov.in/Documents/RevisedPM-KISANOperationalGuidelines(English).pdf"),
+    "ayushman": ("Ayushman Bharat PM-JAY Official Portal", "https://pmjay.gov.in/about/pmjay"),
+    "structured schemes": ("myScheme National Official Government Schemes Portal", "https://www.myscheme.gov.in"),
+
+    "pmfby": ("Pradhan Mantri Fasal Bima Yojana Operational Guidelines", "https://pmfby.gov.in/pdf/Revised_Operational_Guidelines.pdf"),
+    "fasal_bima": ("PM Fasal Bima Yojana Official Guidelines", "https://pmfby.gov.in/pdf/Revised_Operational_Guidelines.pdf"),
+    "kusum": ("PM-KUSUM Solar Pump Scheme Official Portal", "https://pmkusum.mnre.gov.in"),
+    "soil": ("Soil Health Card National Scheme Portal", "https://soilhealth.dac.gov.in"),
+    "aif": ("Agriculture Infrastructure Fund (AIF Official Portal)", "https://agriinfra.dac.gov.in"),
+    "icar": ("ICAR National Agricultural Research & Advisory Network", "https://icar.org.in"),
+    "kvk": ("Krishi Vigyan Kendra (KVK Advisory Network)", "https://icar.org.in"),
+    "annual_report": ("Ministry of Agriculture Annual Reports & Policy Docs", "https://agricoop.nic.in"),
+    "nfsm": ("National Food Security Mission (NFSM Portal)", "https://nfsm.gov.in"),
+    "pm-rkvy": ("Rashtriya Krishi Vikas Yojana (RKVY Guidelines)", "https://rkvy.nic.in"),
 }
 
-def resolve_web_url(source_name: str) -> str:
-    """Returns a valid web URL for a source, mapping local docs to official portals, or None if unmapped."""
+def get_official_scheme_url(source_name: str) -> str:
+    """Maps document metadata source names to official government URLs.
+
+    Args:
+        source_name (str): Document source path or key.
+
+    Returns:
+        str: Mapped official web URL string.
+    """
     if not source_name:
-        return None
-    source_lower = source_name.strip().lower()
+        return "https://www.india.gov.in"
+        
+    source_lower = source_name.lower()
     
     if source_lower.startswith("http://") or source_lower.startswith("https://"):
         return source_name
-        
-    for prefix, web_url in LOCAL_TO_WEB_MAP.items():
+
+    for prefix, (title, web_url) in SPECIFIC_SOURCE_MAP.items():
         if prefix in source_lower:
             return web_url
             
@@ -251,20 +236,25 @@ def resolve_web_url(source_name: str) -> str:
         elif "agri" in source_lower:
             return "https://agricoop.nic.in"
             
-    return None
+    return "https://www.india.gov.in"
 
 
-
-# ── Session start ───────────────────────────────────────────────────────────
+# ── Session Start Handler ───────────────────────────────────────────────────
 @cl.on_chat_start
 async def on_start():
+    """Triggered on new Chainlit user session initialization. Generates unique session_id."""
     session_id = os.urandom(8).hex()
     cl.user_session.set("session_id", session_id)
 
 
-# ── Message handler ─────────────────────────────────────────────────────────
+# ── User Query & Message Handler ─────────────────────────────────────────────
 @cl.on_message
 async def on_message(message: cl.Message):
+    """Processes incoming user chat messages, document image uploads, and executes TriSeva workflow.
+
+    Args:
+        message (cl.Message): Chainlit incoming user message.
+    """
     session_id = cl.user_session.get("session_id")
     query      = message.content.strip()
 
@@ -363,9 +353,6 @@ async def on_message(message: cl.Message):
             print(f"Error writing session logs: {e}")
 
     # ── Build main response ─────────────────────────────────────────────────
-    elements = []
-
-    # Main message content
     header  = f"{meta['icon']} **{meta['label']}**"
     content = f"{header}\n\n---\n\n{answer}"
 

@@ -1,3 +1,10 @@
+"""
+TriSeva Safe AST Mathematical Calculator Tool.
+
+Provides secure, AST-parsed arithmetic expression evaluation for citizen land conversions,
+income threshold calculations, and policy eligibility verification without eval() vulnerabilities.
+"""
+
 import warnings
 warnings.filterwarnings("ignore")
 
@@ -5,7 +12,7 @@ import ast
 import operator
 from langchain_core.tools import tool
 
-# Safe operators only
+# Whitelisted safe mathematical AST operators
 SAFE_OPERATORS = {
     ast.Add:  operator.add,
     ast.Sub:  operator.sub,
@@ -18,7 +25,17 @@ SAFE_OPERATORS = {
 
 
 def _safe_eval(node):
-    """Recursively evaluate an AST node safely."""
+    """Recursively evaluates an AST node using whitelisted safe arithmetic operators.
+
+    Args:
+        node (ast.AST): AST node instance.
+
+    Returns:
+        int | float: Calculated numerical result.
+
+    Raises:
+        ValueError: If unsupported AST nodes or operators are encountered.
+    """
     if isinstance(node, ast.Constant):
         return node.value
     elif isinstance(node, ast.BinOp):
@@ -37,11 +54,16 @@ def _safe_eval(node):
 
 @tool
 def calculator_tool(expression: str) -> str:
-    """
-    Safely evaluate a mathematical expression.
-    Use this for eligibility calculations, income thresholds,
-    unit conversions, or any arithmetic needed to answer a question.
-    Examples: '6000 / 3', '14200 * 12', '2 ** 8'
+    """Safely evaluates a mathematical expression string.
+
+    Use for scheme income eligibility limits, land area conversions, dosage totals, or arithmetic.
+    Examples: '6000 / 3', '14200 * 12', '1.5 * 2.47'.
+
+    Args:
+        expression (str): String containing arithmetic expression.
+
+    Returns:
+        str: Formatted calculation result string (e.g. '6000 / 3 = 2000.0').
     """
     try:
         expression = expression.strip()

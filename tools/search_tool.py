@@ -1,3 +1,10 @@
+"""
+TriSeva Web Search Tool Integration Module.
+
+Provides live web search retrieval using Tavily Search API to supplement RAG database misses
+with real-time official government scheme updates, medical literature, and mandi agricultural prices.
+"""
+
 import warnings
 warnings.filterwarnings("ignore")
 
@@ -8,6 +15,11 @@ from tavily import TavilyClient
 _tavily_client = None
 
 def _get_tavily():
+    """Retrieves or initializes single Tavily API client instance.
+
+    Returns:
+        TavilyClient: Configured Tavily search client instance.
+    """
     global _tavily_client
     if _tavily_client is None:
         _tavily_client = TavilyClient(api_key=os.getenv("TAVILY_API_KEY") or os.getenv("Tavily_API_Key"))
@@ -16,10 +28,15 @@ def _get_tavily():
 
 @tool
 def web_search_tool(query: str) -> str:
-    """
-    Search the web for current information about government schemes,
-    medical guidelines, or agriculture advisories not found in the knowledge base.
-    Use this when RAG retrieval returns insufficient or outdated information.
+    """Searches the live web for real-time government scheme, medical, or agricultural information.
+
+    Use when RAG database retrieval yields insufficient context or when live web facts are required.
+
+    Args:
+        query (str): Search query string.
+
+    Returns:
+        str: Formatted web search result snippets string including titles, URLs, and text content.
     """
     try:
         client = _get_tavily()

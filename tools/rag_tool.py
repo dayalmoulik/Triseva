@@ -1,3 +1,11 @@
+"""
+TriSeva Hybrid RAG Vector Retrieval & Cross-Encoder Re-Ranking Engine.
+
+Implements multi-query expansion, parallel hybrid vector retrieval (multilingual-e5-base)
+and BM25 Okapi subword tokenized sparse search, Reciprocal Rank Fusion (RRF),
+CrossEncoder re-ranking (ms-marco-MiniLM-L-6-v2), and positive confidence score filtering (score > 0).
+"""
+
 import warnings
 warnings.filterwarnings("ignore")
 
@@ -15,7 +23,7 @@ from typing import List
 from rank_bm25 import BM25Okapi
 from sentence_transformers import CrossEncoder
 
-# ── ChromaDB connection ───────────────────────────────────────────────────────
+# ── ChromaDB & Model Configuration ───────────────────────────────────────────
 CHROMA_PATH = "data/chromadb"
 EMBED_MODEL  = "intfloat/multilingual-e5-base"
 RERANK_MODEL = "cross-encoder/ms-marco-MiniLM-L-6-v2"
@@ -29,12 +37,22 @@ _bm25_indices = {}
 _corpus_chunks = {}
 
 def _get_client():
+    """Lazy initializes persistent ChromaDB client instance.
+
+    Returns:
+        chromadb.PersistentClient: ChromaDB database client instance.
+    """
     global _client
     if _client is None:
         _client = chromadb.PersistentClient(path=CHROMA_PATH)
     return _client
 
 def _get_ef():
+    """Lazy initializes E5 multilingual SentenceTransformer embedding function.
+
+    Returns:
+        SentenceTransformerEmbeddingFunction: Embedding model instance.
+    """
     global _ef
     if _ef is None:
         _ef = embedding_functions.SentenceTransformerEmbeddingFunction(
@@ -43,6 +61,11 @@ def _get_ef():
     return _ef
 
 def _get_reranker():
+    """Lazy initializes CrossEncoder re-ranking model instance.
+
+    Returns:
+        CrossEncoder: CrossEncoder re-ranking model instance.
+    """
     global _reranker
     if _reranker is None:
         print(f"  [RERANKER] Initializing CrossEncoder model: {RERANK_MODEL}...")
@@ -50,7 +73,14 @@ def _get_reranker():
     return _reranker
 
 def _tokenize(text: str) -> List[str]:
-    """Helper to tokenize text for BM25 with subword/character n-grams for Indic & Hinglish scripts."""
+    """Tokenizes text for BM25 sparse index using word stems and subword n-grams.
+
+    Args:
+        text (str): Raw string to tokenize.
+
+    Returns:
+        List[str]: List of token strings.
+    """
     words = text.lower().translate(str.maketrans("", "", string.punctuation)).split()
     tokens = list(words)
     # Add subword 3-grams and 4-grams for words >= 4 chars to improve Indic stem matching
@@ -61,7 +91,14 @@ def _tokenize(text: str) -> List[str]:
     return tokens
 
 def _get_bm25_index(domain: str):
-    """Lazy initialize and cache the BM25 index for a domain."""
+    """Lazy initializes and caches the BM25Okapi sparse index for a domain.
+
+    Args:
+        domain (str): Domain key ('health', 'legal', or 'agriculture').
+
+    Returns:
+        Tuple[BM25Okapi, List[dict]]: Pair of (bm25_index, corpus_chunks).
+    """
     global _bm25_indices, _corpus_chunks
     if domain not in _bm25_indices:
         print(f"  [BM25] Building index for 'triseva_{domain}'...")
@@ -99,12 +136,18 @@ def _get_bm25_index(domain: str):
     return _bm25_indices[domain], _corpus_chunks[domain]
 
 
-# ── Core hybrid retrieval with RRF and Re-ranking ────────────────────────────────
+# ── Core Hybrid Retrieval with RRF and Re-ranking ────────────────────────────────
 _expansion_cache = {}
 
-# ── Core hybrid retrieval with RRF and Re-ranking ────────────────────────────────
 def expand_query(query: str) -> List[str]:
-    """Generate 3 alternative search queries in English to expand context recall."""
+    """Generates 3 alternative search queries in English to expand context recall.
+
+    Args:
+        query (str): Input query text.
+
+    Returns:
+        List[str]: Expanded list of search query variations.
+    """
     import re
     global _expansion_cache
     
@@ -114,7 +157,6 @@ def expand_query(query: str) -> List[str]:
         
     try:
         from agents.llm_factory import get_llm
-        # Using a low temperature for stable search query generation
         llm = get_llm(temperature=0.0, max_tokens=150)
         if not llm:
             return [query]
@@ -127,7 +169,6 @@ Provide exactly 3 queries, one per line. Do not number them or include any other
         res = llm.invoke(prompt)
         lines = [line.strip() for line in res.content.strip().split("\n") if line.strip()]
         
-        # Clean up any bullet points or numbering that the LLM might have introduced
         cleaned_lines = []
         for line in lines:
             line_clean = re.sub(r"^\d+\.\s*|-\s*", "", line).strip()
@@ -146,7 +187,16 @@ Provide exactly 3 queries, one per line. Do not number them or include any other
 
 
 def expand_context_with_neighbors(collection, chunk_id: str, current_text: str) -> str:
-    """Expand retrieved chunk text by joining it with adjacent sequential chunks."""
+    """Expands retrieved chunk text by joining it with adjacent sequential document passages.
+
+    Args:
+        collection: ChromaDB collection instance.
+        chunk_id (str): Retrieved chunk ID (e.g. 'doc1_0003').
+        current_text (str): Current chunk text.
+
+    Returns:
+        str: Expanded context text containing preceding and succeeding chunk passages.
+    """
     try:
         parts = chunk_id.rsplit("_", 1)
         if len(parts) != 2:
@@ -159,16 +209,13 @@ def expand_context_with_neighbors(collection, chunk_id: str, current_text: str) 
             f"{prefix}_{num+1:04d}"
         ]
         
-        # Query adjacent chunks
         res = collection.get(ids=neighbor_ids)
         if not res or not res.get("documents"):
             return current_text
             
-        # Map documents to their ids
         doc_map = dict(zip(res["ids"], res["documents"]))
         
         expanded_docs = []
-        # Previous chunk
         prev_id = neighbor_ids[0]
         if prev_id in doc_map:
             doc_text = doc_map[prev_id]
@@ -176,13 +223,8 @@ def expand_context_with_neighbors(collection, chunk_id: str, current_text: str) 
                 doc_text = doc_text[9:]
             expanded_docs.append(doc_text)
             
-        # Current chunk
-        curr_text = current_text
-        if curr_text.startswith("passage: "):
-            curr_text = curr_text[9:]
-        expanded_docs.append(curr_text)
+        expanded_docs.append(current_text)
         
-        # Next chunk
         next_id = neighbor_ids[1]
         if next_id in doc_map:
             doc_text = doc_map[next_id]
@@ -192,13 +234,22 @@ def expand_context_with_neighbors(collection, chunk_id: str, current_text: str) 
             
         return "\n\n".join(expanded_docs)
     except Exception as e:
-        # Fallback to current text on any errors
+        print(f"  [Context Expansion] Error joining neighbors for {chunk_id}: {e}")
         return current_text
 
 
-# ── Core hybrid retrieval with RRF and Re-ranking ────────────────────────────────
 def retrieve(query: str, domain: str, n_results: int = 7, native_query: str = None) -> List[dict]:
-    """Retrieve top-n relevant chunks using Query Expansion and Hybrid Search (E5 + BM25 + RRF + Re-ranking)."""
+    """Retrieves top-n relevant chunks using parallel E5 dense vector search, BM25 sparse search, RRF fusion, CrossEncoder re-ranking, and positive confidence score filtering.
+
+    Args:
+        query (str): Working search query (English).
+        domain (str): Domain key ('health', 'legal', or 'agriculture').
+        n_results (int, optional): Target chunk count. Defaults to 7.
+        native_query (str, optional): Original Hindi/Hinglish query for dual-retrieval. Defaults to None.
+
+    Returns:
+        List[dict]: List of top-k retrieved chunk dictionaries ({text, source, domain, score, id}).
+    """
     import re
     from concurrent.futures import ThreadPoolExecutor
     
@@ -241,7 +292,7 @@ def retrieve(query: str, domain: str, n_results: int = 7, native_query: str = No
     print(f"  [RAG] Query expansion generated: {expanded_queries}")
 
     candidate_limit = n_results * 3
-    rrf_scores = {} # text_content_lower -> (chunk_dict, combined_rrf_score)
+    rrf_scores = {}
 
     def get_key(chunk):
         return chunk["text"].strip().lower()
@@ -346,7 +397,7 @@ def retrieve(query: str, domain: str, n_results: int = 7, native_query: str = No
     if not rerank_candidates:
         return []
 
-    # 3. Cross-Encoder Re-ranking (evaluated against the ORIGINAL user query)
+    # 3. Cross-Encoder Re-ranking (evaluated against original user query)
     try:
         reranker = _get_reranker()
         pairs = [[query, c["text"]] for c in rerank_candidates]
@@ -375,11 +426,10 @@ def retrieve(query: str, domain: str, n_results: int = 7, native_query: str = No
         return fallback_chunks
 
 
-# ── LangChain tool wrappers ───────────────────────────────────────────────────
+# ── LangChain Tool Wrappers ───────────────────────────────────────────────────
 @tool
 def health_rag_tool(query: str) -> str:
-    """Search the healthcare knowledge base for medical conditions,
-    lab results, medications, symptoms, and treatments."""
+    """Searches the healthcare knowledge base for medical conditions, lab results, medications, and clinical guidelines."""
     chunks = retrieve(query, domain="health", n_results=5)
     if not chunks:
         return "No relevant health information found in the knowledge base."
@@ -392,8 +442,7 @@ def health_rag_tool(query: str) -> str:
 
 @tool
 def legal_rag_tool(query: str) -> str:
-    """Search the legal and government schemes knowledge base for
-    welfare schemes, eligibility criteria, RTI, and legal rights."""
+    """Searches the legal and government schemes knowledge base for welfare benefits, eligibility criteria, RTI, and legal rights."""
     chunks = retrieve(query, domain="legal", n_results=5)
     if not chunks:
         return "No relevant legal information found in the knowledge base."
@@ -406,8 +455,7 @@ def legal_rag_tool(query: str) -> str:
 
 @tool
 def agriculture_rag_tool(query: str) -> str:
-    """Search the agriculture knowledge base for Indian farming schemes,
-    crop advisories, irrigation, and farm support programs."""
+    """Searches the agriculture knowledge base for Indian farming schemes, crop advisories, MSP, mandi prices, and soil health."""
     chunks = retrieve(query, domain="agriculture", n_results=5)
     if not chunks:
         return "No relevant agriculture information found in the knowledge base."

@@ -1,3 +1,10 @@
+"""
+TriSeva Healthcare Specialist Agent Node.
+
+Provides medical information and prescription analysis for Indian citizens
+using a dynamic ReAct agent loop bound to ChromaDB healthcare vector RAG and Tavily web search tools.
+"""
+
 import warnings
 warnings.filterwarnings("ignore")
 
@@ -22,10 +29,8 @@ from agents.utils import parse_agent_json, initialize_telemetry, get_document_co
 from tools.rag_tool import retrieve
 from tools.search_tool import web_search_tool
 
-# ── LLM ───────────────────────────────────────────────────────────────────────
 llm = None
 
-# ── System Prompt ─────────────────────────────────────────────────────────────
 HEALTH_SYSTEM_PROMPT = """You are TriSeva's Healthcare Assistant — a knowledgeable,
 empathetic medical information assistant for Indian patients.
 
@@ -57,7 +62,17 @@ Do not include any text outside the JSON object."""
 
 
 def health_agent_node(state: TriSevaState) -> dict:
-    """Healthcare Specialist Node running a dynamic ReAct agent loop."""
+    """Healthcare specialist execution node running dynamic ReAct agent loop.
+
+    Handles direct document analysis for uploaded doctor prescriptions and lab reports,
+    or executes ReAct retrieval over ChromaDB healthcare collections and Tavily web search.
+
+    Args:
+        state (TriSevaState): Pipeline state containing user query, optional document text, and history.
+
+    Returns:
+        dict: State update dictionary containing 'draft_answer', 'retrieved_chunks', 'sources', and 'domain_disclaimer'.
+    """
     print(f"  [Health Agent] Processing: '{state['user_query'][:60]}'")
 
     # Load or initialize telemetry
@@ -69,10 +84,7 @@ def health_agent_node(state: TriSevaState) -> dict:
     # ── Define Tools ──────────────────────────────────────────────────────────
     @tool
     def healthcare_knowledge_base_retrieval(query: str) -> str:
-        """
-        Query the healthcare database for medical guidelines, dosage, and diseases.
-        Use this as your primary tool to retrieve grounded facts.
-        """
+        """Query the healthcare database for medical guidelines, dosage, and diseases."""
         print(f"    [Health Agent Tool] Querying local KB: '{query}'")
         orig_q = state.get("original_query")
         chunks = retrieve(query, domain="health", n_results=7, native_query=orig_q)
@@ -88,10 +100,7 @@ def health_agent_node(state: TriSevaState) -> dict:
 
     @tool
     def healthcare_web_search(query: str) -> str:
-        """
-        Search the web for current medical information.
-        Use this ONLY when the healthcare database does not contain the answer.
-        """
+        """Search the web for current medical information."""
         print(f"    [Health Agent Tool] Searching web: '{query}'")
         telemetry["is_fallback_retrieval"] = True
         res = web_search_tool.invoke(query)
@@ -120,7 +129,6 @@ def health_agent_node(state: TriSevaState) -> dict:
             }
 
         if doc_context:
-            # Direct LLM call to prevent tool-binding and avoid 403/Forbidden issues on model endpoints
             prompt = f"""You are TriSeva's Healthcare Assistant — a knowledgeable, empathetic medical information assistant for Indian patients.
 Analyze the provided document context (e.g., doctor prescription, lab report, or clinical note) and fulfill the user's request.
 
@@ -169,7 +177,6 @@ Do not include any text outside the JSON object."""
             prompt=HEALTH_SYSTEM_PROMPT
         )
 
-        # ── Setup Conversation Messages ──────────────────────────────────────
         messages = [
             HumanMessage(content=state["user_query"])
         ]
@@ -185,10 +192,8 @@ Do not include any text outside the JSON object."""
 
 Please revise your response. Review the previous context, and use tools to re-query the database or search the web if you need more facts to satisfy the Critic's guidelines. Ensure every statement in your revised answer is directly and strictly supported by the retrieved context. Do NOT extrapolate."""))
 
-        # ── Execute Agent ─────────────────────────────────────────────────────
         result = agent.invoke({"messages": messages})
         
-        # Extract the final answer from the last message in history
         final_messages = result.get("messages", [])
         raw_answer = final_messages[-1].content if final_messages else ""
 
@@ -197,7 +202,6 @@ Please revise your response. Review the previous context, and use tools to re-qu
         default_disclaimer = "⚕️ This is informational only. Please consult a qualified doctor for personal medical advice."
         factual, caution = parse_agent_json(raw_answer, default_disclaimer)
 
-        # Ensure we have default lists if no tool calls were triggered
         chunks_to_return = retrieved_chunks_list if retrieved_chunks_list else ["No context."]
         sources_to_return = retrieved_sources_list if retrieved_sources_list else [{"source": "system", "score": 1.0}]
 

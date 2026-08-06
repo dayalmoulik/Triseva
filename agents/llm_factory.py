@@ -1,8 +1,31 @@
+"""
+TriSeva LLM Factory & Multi-Provider Resilient Failover Module.
+
+Instantiates primary LLM model backends (Sarvam-105B Indic LLM) and attaches automatic
+resilient fallbacks (Groq Llama-3.3-70B, OpenAI GPT-4o-mini, Anthropic Claude Haiku)
+to guarantee high availability and sub-second failover.
+"""
+
 import os
 from langchain_openai import ChatOpenAI
 
-def get_llm(temperature=0.2, max_tokens=1024, timeout=20):
-    """Factory function to retrieve LLM backend, with automatic resilient multi-provider fallbacks."""
+def get_llm(temperature: float = 0.2, max_tokens: int = 1024, timeout: int = 20):
+    """Factory function to retrieve LLM instance with automated multi-provider fallbacks.
+
+    Configures primary provider based on `LLM_PROVIDER` environment variable ('sarvam', 'groq', 'openai')
+    and chains fallback models via LangChain's `.with_fallbacks()`.
+
+    Args:
+        temperature (float, optional): Sampling temperature (0.0 for deterministic output). Defaults to 0.2.
+        max_tokens (int, optional): Maximum token generation limit. Defaults to 1024.
+        timeout (int, optional): Per-request HTTP timeout in seconds. Defaults to 20.
+
+    Returns:
+        BaseChatModel: Configured LLM model instance with chained fallbacks.
+
+    Raises:
+        ValueError: If no valid LLM provider API key is present in environment variables.
+    """
     primary_provider = (os.getenv("LLM_PROVIDER") or os.getenv("LLM_Provider") or "sarvam").lower()
     
     fallbacks = []

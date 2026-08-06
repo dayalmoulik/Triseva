@@ -1,3 +1,10 @@
+"""
+TriSeva Legal & Government Schemes Specialist Agent Node.
+
+Provides accurate guidance on Indian government welfare schemes (PM-KISAN, MGNREGA, PMAY, Ayushman Bharat, RTI, Article 371A)
+using a dynamic ReAct agent loop bound to ChromaDB legal vector RAG, AST calculator, and Tavily web search tools.
+"""
+
 import warnings
 warnings.filterwarnings("ignore")
 
@@ -23,10 +30,8 @@ from tools.rag_tool import retrieve
 from tools.search_tool import web_search_tool
 from tools.calculator_tool import calculator_tool
 
-# ── LLM ───────────────────────────────────────────────────────────────────────
 llm = None
 
-# ── System Prompt ─────────────────────────────────────────────────────────────
 LEGAL_SYSTEM_PROMPT = """You are TriSeva's Legal and Government Schemes Assistant —
 an expert on Indian government welfare schemes, citizen rights, and legal aid.
 
@@ -59,7 +64,17 @@ Do not include any text outside the JSON object."""
 
 
 def legal_agent_node(state: TriSevaState) -> dict:
-    """Legal & Government Schemes Specialist Node running a dynamic ReAct agent loop."""
+    """Legal & Government Schemes specialist execution node running dynamic ReAct agent loop.
+
+    Handles direct document analysis for uploaded government orders and land records,
+    or executes ReAct retrieval over ChromaDB legal collections, calculator tool, and Tavily web search.
+
+    Args:
+        state (TriSevaState): Pipeline state containing user query, optional document text, and history.
+
+    Returns:
+        dict: State update dictionary containing 'draft_answer', 'retrieved_chunks', 'sources', and 'domain_disclaimer'.
+    """
     print(f"  [Legal Agent] Processing: '{state['user_query'][:60]}'")
 
     # Load or initialize telemetry
@@ -69,7 +84,14 @@ def legal_agent_node(state: TriSevaState) -> dict:
     retrieved_sources_list = []
 
     def check_structured_schemes(q_text: str) -> str:
-        """Check query for scheme keywords and return their structured metadata context if matched."""
+        """Checks query text against structured JSON rules (`data/legal_schemes.json`).
+
+        Args:
+            q_text (str): Query text string.
+
+        Returns:
+            str: Matched structured scheme rules text string or empty string.
+        """
         try:
             import json
             import os
@@ -143,10 +165,7 @@ def legal_agent_node(state: TriSevaState) -> dict:
     # ── Define Tools ──────────────────────────────────────────────────────────
     @tool
     def legal_knowledge_base_retrieval(query: str) -> str:
-        """
-        Query the legal and government schemes database for welfare details, laws, and eligibility rules.
-        Use this as your primary tool to retrieve grounded facts.
-        """
+        """Query the legal and government schemes database for welfare details, laws, and eligibility rules."""
         print(f"    [Legal Agent Tool] Querying local KB: '{query}'")
         orig_q = state.get("original_query")
         chunks = retrieve(query, domain="legal", n_results=7, native_query=orig_q)
@@ -169,10 +188,7 @@ def legal_agent_node(state: TriSevaState) -> dict:
 
     @tool
     def legal_web_search(query: str) -> str:
-        """
-        Search the web for current legal guidelines or government schemes.
-        Use this ONLY when the legal database does not contain the answer.
-        """
+        """Search the web for current legal guidelines or government schemes."""
         print(f"    [Legal Agent Tool] Searching web: '{query}'")
         telemetry["is_fallback_retrieval"] = True
         res = web_search_tool.invoke(query)
@@ -201,7 +217,6 @@ def legal_agent_node(state: TriSevaState) -> dict:
             }
 
         if doc_context:
-            # Direct LLM call to prevent tool-binding and avoid 403/Forbidden issues on model endpoints
             prompt = f"""You are TriSeva's Legal and Government Schemes Assistant — an expert on Indian government welfare schemes, citizen rights, and legal aid.
 Analyze the provided document context (e.g., government order, scheme application, land record, or legal document) and fulfill the user's request.
 
@@ -248,7 +263,6 @@ Do not include any text outside the JSON object."""
             prompt=LEGAL_SYSTEM_PROMPT
         )
 
-        # ── Setup Conversation Messages ──────────────────────────────────────
         messages = [
             HumanMessage(content=state["user_query"])
         ]
@@ -264,7 +278,6 @@ Do not include any text outside the JSON object."""
 
 Please revise your response. Review the previous context, and use tools to re-query the database or search the web if you need more facts to satisfy the Critic's guidelines. Ensure every statement in your revised answer is directly and strictly supported by the retrieved context. Do NOT extrapolate."""))
 
-        # ── Execute Agent ─────────────────────────────────────────────────────
         print(f"  [Legal Agent] About to call LLM...")
         sys.stdout.flush()
         
@@ -273,7 +286,6 @@ Please revise your response. Review the previous context, and use tools to re-qu
         print(f"  [Legal Agent] LLM call returned")
         sys.stdout.flush()
 
-        # Extract the final answer from the last message in history
         final_messages = result.get("messages", [])
         raw_answer = final_messages[-1].content if final_messages else ""
         sys.stdout.flush()
@@ -283,7 +295,6 @@ Please revise your response. Review the previous context, and use tools to re-qu
         default_disclaimer = "⚖️ This information is for guidance only. Consult a legal professional for specific advice."
         factual, caution = parse_agent_json(raw_answer, default_disclaimer)
 
-        # Ensure we have default lists if no tool calls were triggered
         chunks_to_return = retrieved_chunks_list if retrieved_chunks_list else ["No context."]
         sources_to_return = retrieved_sources_list if retrieved_sources_list else [{"source": "system", "score": 1.0}]
 

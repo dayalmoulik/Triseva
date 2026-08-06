@@ -1,3 +1,10 @@
+"""
+TriSeva Agriculture Specialist Agent Node.
+
+Provides Indian agricultural guidance (Kharif/Rabi crops, Soil Health Cards, PM-KISAN, PMFBY, KVK advisories)
+using a dynamic ReAct agent loop bound to ChromaDB hybrid RAG and Tavily live web search tools.
+"""
+
 import warnings
 warnings.filterwarnings("ignore")
 
@@ -22,10 +29,8 @@ from agents.utils import parse_agent_json, initialize_telemetry, get_document_co
 from tools.rag_tool import retrieve
 from tools.search_tool import web_search_tool
 
-# ── LLM ───────────────────────────────────────────────────────────────────────
 llm = None
 
-# ── System Prompt ─────────────────────────────────────────────────────────────
 AGRI_SYSTEM_PROMPT = """You are TriSeva's Agriculture Assistant for India.
 Help farmers with practical, safe, and policy-aware guidance using the provided context.
 
@@ -58,7 +63,14 @@ Do not include any text outside the JSON object."""
 
 
 def check_structured_agri_rules(query: str) -> str:
-    """Matches structured agricultural advisories and scheme rules for common farming queries."""
+    """Matches query keywords against structured ICAR/KVK agricultural advisories and scheme rules.
+
+    Args:
+        query (str): Input query text.
+
+    Returns:
+        str: Matched structured advisory text string or empty string.
+    """
     query_lower = query.strip().lower()
     matched_context = ""
     
@@ -96,7 +108,17 @@ def check_structured_agri_rules(query: str) -> str:
 
 
 def agri_agent_node(state: TriSevaState) -> dict:
-    """Agriculture Specialist Node running a dynamic ReAct agent loop."""
+    """Agriculture specialist execution node running dynamic ReAct agent loop.
+
+    Handles direct document analysis for uploaded Soil Health Cards and crop reports,
+    or executes ReAct retrieval over ChromaDB agriculture collections and Tavily web search.
+
+    Args:
+        state (TriSevaState): Pipeline state containing user query, optional document text, and history.
+
+    Returns:
+        dict: State update dictionary containing 'draft_answer', 'retrieved_chunks', 'sources', and 'domain_disclaimer'.
+    """
     print(f"  [Agri Agent] Processing: '{state['user_query'][:60]}'")
 
     # Load or initialize telemetry
@@ -108,10 +130,7 @@ def agri_agent_node(state: TriSevaState) -> dict:
     # ── Define Tools ──────────────────────────────────────────────────────────
     @tool
     def agriculture_knowledge_base_retrieval(query: str) -> str:
-        """
-        Query the agriculture database for practical farming guidelines, MSP, and crop advisory.
-        Use this as your primary tool to retrieve grounded facts.
-        """
+        """Query the agriculture database for practical farming guidelines, MSP, and crop advisory."""
         print(f"    [Agri Agent Tool] Querying local KB: '{query}'")
         orig_q = state.get("original_query")
         chunks = retrieve(query, domain="agriculture", n_results=7, native_query=orig_q)
@@ -134,10 +153,7 @@ def agri_agent_node(state: TriSevaState) -> dict:
 
     @tool
     def agriculture_web_search(query: str) -> str:
-        """
-        Search the web for current farming advisories, MSP, mandi prices, or schemes.
-        Use this ONLY when the agriculture database does not contain the answer.
-        """
+        """Search the web for current farming advisories, MSP, mandi prices, or schemes."""
         print(f"    [Agri Agent Tool] Searching web: '{query}'")
         telemetry["is_fallback_retrieval"] = True
         res = web_search_tool.invoke(query)
@@ -167,7 +183,6 @@ def agri_agent_node(state: TriSevaState) -> dict:
             }
 
         if doc_context:
-            # Direct LLM call to prevent tool-binding and avoid 403/Forbidden issues on model endpoints
             prompt = f"""You are TriSeva's Agriculture Assistant for India.
 Analyze the provided document context (e.g., Soil Health Card, crop advisory, or agricultural receipt) and fulfill the user's request.
 
@@ -219,7 +234,6 @@ Do not include any text outside the JSON object."""
             prompt=AGRI_SYSTEM_PROMPT
         )
 
-        # ── Setup Conversation Messages ──────────────────────────────────────
         messages = [
             HumanMessage(content=state["user_query"])
         ]
@@ -235,10 +249,8 @@ Do not include any text outside the JSON object."""
 
 Please revise your response. Review the previous context, and use tools to re-query the database or search the web if you need more facts to satisfy the Critic's guidelines. Ensure every statement in your revised answer is directly and strictly supported by the retrieved context. Do NOT extrapolate."""))
 
-        # ── Execute Agent ─────────────────────────────────────────────────────
         result = agent.invoke({"messages": messages})
         
-        # Extract the final answer from the last message in history
         final_messages = result.get("messages", [])
         raw_answer = final_messages[-1].content if final_messages else ""
 
@@ -247,7 +259,6 @@ Please revise your response. Review the previous context, and use tools to re-qu
         default_disclaimer = "🌾 Always verify schemes and advisories on official government portals (e.g., pmkisan.gov.in) and follow local agriculture officer guidance."
         factual, caution = parse_agent_json(raw_answer, default_disclaimer)
 
-        # Ensure we have default lists if no tool calls were triggered
         chunks_to_return = retrieved_chunks_list if retrieved_chunks_list else ["No context."]
         sources_to_return = retrieved_sources_list if retrieved_sources_list else [{"source": "system", "score": 1.0}]
 

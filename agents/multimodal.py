@@ -1,3 +1,17 @@
+"""
+TriSeva Multimodal Document OCR & Image Processing Node.
+
+Transcribes text from uploaded document images (medical prescriptions, doctor notes, lab reports,
+soil health cards, land revenue records) using a tiered VLM extraction cascade:
+1. Disk MD5 Hash Caching
+2. Image Preprocessing (EXIF orientation, autocontrast, sharpness enhancement, aspect-ratio scaling max 1600px)
+3. Azure AI Document Intelligence Layout Engine
+4. Primary Cloud VLM (Gemini 2.0 Flash / 1.5 Flash)
+5. Local On-Device VLM (Qwen2.5-VL / Llama-3.2-Vision via Ollama)
+6. Fallback Cloud VLM (OpenAI gpt-4o-mini)
+7. Post-OCR medical term / prescription typo correction dictionary
+"""
+
 import os
 import time
 import hashlib
@@ -11,7 +25,6 @@ from openai import OpenAI
 from agents.state import TriSevaState
 from agents.utils import initialize_telemetry, get_document_context
 
-# ── Extraction Prompt Configuration ─────────────────────────────────────────────
 # ── Extraction Prompt Configuration ─────────────────────────────────────────────
 EXTRACTION_PROMPT = (
     "You are an expert Multimodal Document & Medical Prescription OCR Engine.\n"
@@ -32,7 +45,14 @@ CACHE_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data", "oc
 
 # ── MD5 Caching Utilities ───────────────────────────────────────────────────────
 def get_cached_ocr(file_bytes: bytes) -> str | None:
-    """Checks if file bytes have a cached OCR result by MD5 hash."""
+    """Retrieves cached OCR transcription using the MD5 hash of raw file bytes.
+
+    Args:
+        file_bytes (bytes): Raw binary bytes of document file/image.
+
+    Returns:
+        str | None: Transcribed text string if cache hit occurs, else None.
+    """
     try:
         os.makedirs(CACHE_DIR, exist_ok=True)
         file_hash = hashlib.md5(file_bytes).hexdigest()
@@ -64,7 +84,14 @@ COMMON_MEDICAL_OCR_TYPOS = {
 }
 
 def correct_medical_ocr_typos(text: str) -> str:
-    """Post-processes extracted OCR text to fix common doctor handwriting/VLM transcription typos."""
+    """Applies regex dictionary corrections to fix common doctor handwriting OCR misspellings.
+
+    Args:
+        text (str): Raw extracted OCR text.
+
+    Returns:
+        str: Corrected medical prescription text string.
+    """
     if not text:
         return text
     import re
@@ -75,7 +102,12 @@ def correct_medical_ocr_typos(text: str) -> str:
 
 
 def save_ocr_to_cache(file_bytes: bytes, text: str):
-    """Saves extracted OCR text to disk using MD5 hash of file bytes."""
+    """Saves extracted OCR text to disk using MD5 hash of raw file bytes.
+
+    Args:
+        file_bytes (bytes): Raw binary bytes of document file/image.
+        text (str): Transcribed document text string to cache.
+    """
     if not text or not text.strip():
         return
     try:
@@ -91,13 +123,16 @@ def save_ocr_to_cache(file_bytes: bytes, text: str):
 
 # ── Image Preprocessing Pipeline ───────────────────────────────────────────────
 def preprocess_image_bytes(image_bytes: bytes) -> bytes:
-    """
-    Preprocesses document/prescription image bytes to optimize VLM / OCR readability:
-    1. Correct EXIF orientation.
-    2. Convert RGBA/Palette images to RGB.
-    3. Apply autocontrast to normalize shadowed/dark document photos.
-    4. Apply contrast & sharpness enhancement for faint cursive handwriting & medical prescriptions.
-    5. Intelligently resize oversized images (> 2048px) maintaining aspect ratio.
+    """Preprocesses document/prescription image bytes to maximize VLM readability.
+
+    Applies EXIF rotation correction, RGB color conversion, autocontrast normalization,
+    sharpness enhancement for faint handwriting, and aspect-ratio scaling (max dim 1600px).
+
+    Args:
+        image_bytes (bytes): Raw input image bytes.
+
+    Returns:
+        bytes: Processed JPEG image bytes (quality 88).
     """
     try:
         image = Image.open(io.BytesIO(image_bytes))
@@ -141,7 +176,14 @@ def preprocess_image_bytes(image_bytes: bytes) -> bytes:
 
 # ── PDF Extraction Utilities ────────────────────────────────────────────────────
 def extract_text_from_pdf(pdf_path: str) -> str:
-    """Extracts text locally from a PDF using PyMuPDF (fitz)."""
+    """Extracts digital text from PDF document using PyMuPDF (fitz).
+
+    Args:
+        pdf_path (str): File path to input PDF file.
+
+    Returns:
+        str: Extracted digital text string formatted per page.
+    """
     text = []
     try:
         doc = fitz.open(pdf_path)
@@ -159,7 +201,14 @@ def extract_text_from_pdf(pdf_path: str) -> str:
 
 # ── VLM OCR Provider Engines ────────────────────────────────────────────────────
 def extract_via_azure_document_intelligence(image_bytes: bytes) -> str:
-    """Uses Azure AI Document Intelligence (Layout Model) for high-precision table grid & handwriting OCR."""
+    """Uses Azure AI Document Intelligence Layout model for grid table and form extraction.
+
+    Args:
+        image_bytes (bytes): Processed image bytes.
+
+    Returns:
+        str: Extracted markdown text string or empty string on failure.
+    """
     endpoint = os.getenv("AZURE_DOC_INTEL_ENDPOINT")
     key = os.getenv("AZURE_DOC_INTEL_KEY")
 
@@ -189,7 +238,14 @@ def extract_via_azure_document_intelligence(image_bytes: bytes) -> str:
 
 
 def is_ollama_online(ollama_url: str) -> bool:
-    """Fast (0.5s) check to see if local Ollama server is reachable."""
+    """Performs a fast 0.8s HTTP health check to verify if local Ollama server is online.
+
+    Args:
+        ollama_url (str): Local Ollama API endpoint URL.
+
+    Returns:
+        bool: True if server is reachable and active, False otherwise.
+    """
     try:
         tags_url = ollama_url.replace("/api/generate", "/api/tags")
         r = requests.get(tags_url, timeout=0.8)
@@ -199,7 +255,14 @@ def is_ollama_online(ollama_url: str) -> bool:
 
 
 def extract_text_via_qwen_vl(image_bytes: bytes) -> str:
-    """Uses Qwen2.5-VL (via local Ollama or vLLM endpoint) for high-accuracy document & medical handwriting OCR."""
+    """Uses Qwen2.5-VL / Llama-3.2-Vision models via local Ollama for OCR extraction.
+
+    Args:
+        image_bytes (bytes): Processed document image bytes.
+
+    Returns:
+        str: Transcribed text string or empty string on failure.
+    """
     ollama_url = os.getenv("OLLAMA_API_BASE", "http://localhost:11434/api/generate")
     if not is_ollama_online(ollama_url):
         print("multimodal: Local Ollama server is offline/unreachable. Skipping local VLM attempts.")
@@ -242,7 +305,14 @@ def extract_text_via_qwen_vl(image_bytes: bytes) -> str:
 
 
 def extract_text_via_local_ollama(image_bytes: bytes) -> str:
-    """Uses local VLM (Qwen2.5-VL / InternVL2-8B) via Ollama/local endpoint for OCR/extraction."""
+    """Uses fallback local Ollama model for document text extraction.
+
+    Args:
+        image_bytes (bytes): Processed image bytes.
+
+    Returns:
+        str: Extracted text string or empty string.
+    """
     ollama_url = os.getenv("OLLAMA_API_BASE", "http://localhost:11434/api/generate")
     if not is_ollama_online(ollama_url):
         print("multimodal: Local Ollama server is offline. Skipping local VLM.")
@@ -277,7 +347,14 @@ def extract_text_via_local_ollama(image_bytes: bytes) -> str:
 
 
 def extract_text_via_gemini_flash(image_bytes: bytes) -> str:
-    """Uses Gemini Vision (2.0 Flash / 1.5 Flash) to perform high-accuracy OCR/prescription reading on image bytes."""
+    """Uses Gemini 2.0 Flash / 1.5 Flash vision models for primary cloud OCR extraction.
+
+    Args:
+        image_bytes (bytes): Processed image bytes.
+
+    Returns:
+        str: Extracted document text string or empty string on failure.
+    """
     import base64
     google_key = os.getenv("GOOGLE_API_KEY")
     if not google_key:
@@ -314,7 +391,14 @@ def extract_text_via_gemini_flash(image_bytes: bytes) -> str:
 
 
 def extract_text_via_openai_mini(image_bytes: bytes) -> str:
-    """Uses OpenAI gpt-4o-mini as a fallback OCR on image bytes."""
+    """Uses OpenAI gpt-4o-mini as a secondary cloud fallback OCR engine.
+
+    Args:
+        image_bytes (bytes): Processed image bytes.
+
+    Returns:
+        str: Extracted document text string or empty string on failure.
+    """
     import base64
     openai_key = os.getenv("OPENAI_API_KEY")
     if not openai_key:
@@ -352,7 +436,17 @@ def extract_text_via_openai_mini(image_bytes: bytes) -> str:
 
 # ── Main Multimodal State Node ──────────────────────────────────────────────────
 def image_processing_node(state: TriSevaState) -> dict:
-    """StateGraph Node: Processes the uploaded PDF or image to extract text and store it in state."""
+    """Pipeline node processing uploaded PDF or image files to extract document text.
+
+    Executes MD5 content cache lookup, image contrast/sharpness preprocessing, 300 DPI page rendering
+    for scanned PDFs, and tiered VLM OCR extraction (Azure Doc Intel $\rightarrow$ Gemini Flash $\rightarrow$ Local Qwen2.5-VL $\rightarrow$ OpenAI gpt-4o-mini).
+
+    Args:
+        state (TriSevaState): Pipeline state containing 'image_path'.
+
+    Returns:
+        dict: State update dictionary containing 'image_text'.
+    """
     image_path = state.get("image_path")
     if not image_path:
         return {"image_text": None}
