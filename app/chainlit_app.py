@@ -263,6 +263,8 @@ async def on_message(message: cl.Message):
 
     # Extract uploaded file path or intelligently reuse session image for follow-up document queries
     image_path = None
+    domain_override = None
+
     if message.elements:
         for element in message.elements:
             if element.path and os.path.exists(element.path):
@@ -273,7 +275,6 @@ async def on_message(message: cl.Message):
         # Only reuse active session image if the query asks about the image/document or if query is blank
         last_path = cl.user_session.get("last_image_path")
         last_domain = cl.user_session.get("last_domain")
-        domain_override = None
 
         if last_path:
             query_low = query.lower()
