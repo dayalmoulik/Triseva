@@ -137,6 +137,25 @@ def init_db():
 init_db()
 
 # ── Data Layer for Thread & Feedback Persistence ──────────────────────────────
+def ensure_chainlit_db_schema():
+    """Ensures SQLite chainlit.db has all required columns for Chainlit 2.x."""
+    db_path = os.path.abspath("chainlit.db")
+    if not os.path.exists(db_path):
+        return
+    try:
+        import sqlite3
+        conn = sqlite3.connect(db_path)
+        cursor = conn.cursor()
+        cursor.execute("PRAGMA table_info(elements)")
+        columns = [row[1] for row in cursor.fetchall()]
+        if columns and "props" not in columns:
+            cursor.execute("ALTER TABLE elements ADD COLUMN props TEXT")
+            conn.commit()
+            print("  [Chainlit DB Migration] Added missing 'props' column to elements table.")
+        conn.close()
+    except Exception as e:
+        print(f"  [Chainlit DB Schema Check Warning] {e}")
+
 @cl.data_layer
 def get_data_layer():
     """Returns SQLAlchemy persistent data layer instance for Chainlit thread storage.
@@ -144,6 +163,7 @@ def get_data_layer():
     Returns:
         SQLAlchemyDataLayer: Database data layer instance.
     """
+    ensure_chainlit_db_schema()
     db_path = os.path.abspath("chainlit.db")
     conn_str = f"sqlite+aiosqlite:///{db_path}"
     try:
