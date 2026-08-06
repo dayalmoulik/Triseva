@@ -117,18 +117,15 @@ def health_agent_node(state: TriSevaState) -> dict:
         llm = get_llm(temperature=0.2, max_tokens=1024)
 
         image_path = state.get("image_path")
-        doc_context = get_document_context(state)
-
-        if not doc_context and image_path:
-            return {
-                "draft_answer": "I was unable to extract readable text from the uploaded document image. Please ensure the document photo or scan is clear, well-lit, and legible, or try re-uploading a higher resolution image.",
-                "retrieved_chunks": [],
-                "sources": [],
-                "domain_disclaimer": "⚕️ This is informational only. Please consult a qualified doctor for personal medical advice.",
-                "telemetry": telemetry,
-            }
-
         if doc_context:
+            # Check if document is an agricultural Soil Health Card or farm document
+            doc_low = doc_context.lower()
+            if any(k in doc_low for k in ["soil health", "soil card", "npk", "fertilizer", "gypsum", "alluvial", "electrical conductivity", "nitrogen", "phosphorus", "potassium", "mumtajpur"]):
+                print("  [Health Agent] Detected agricultural document in health node — delegating to Agri Agent...")
+                from agents.agri_agent import agri_agent_node
+                state["domain"] = "agriculture"
+                return agri_agent_node(state)
+
             prompt = f"""You are TriSeva's Healthcare Assistant — a knowledgeable, empathetic medical information assistant for Indian patients.
 Analyze the provided document context (e.g., doctor prescription, lab report, or clinical note) and fulfill the user's request.
 

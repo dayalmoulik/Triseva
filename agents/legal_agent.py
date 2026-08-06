@@ -217,6 +217,18 @@ def legal_agent_node(state: TriSevaState) -> dict:
             }
 
         if doc_context:
+            doc_low = doc_context.lower()
+            if any(k in doc_low for k in ["soil health", "soil card", "npk", "fertilizer", "gypsum", "alluvial", "electrical conductivity", "nitrogen", "phosphorus", "potassium", "mumtajpur"]):
+                print("  [Legal Agent] Detected agricultural document in legal node — delegating to Agri Agent...")
+                from agents.agri_agent import agri_agent_node
+                state["domain"] = "agriculture"
+                return agri_agent_node(state)
+            if any(k in doc_low for k in ["rx", "prescription", "medication", "dosage", "tablet", "capsule", "syrup", "opd", "patient name", "doctor name"]):
+                print("  [Legal Agent] Detected medical prescription document in legal node — delegating to Health Agent...")
+                from agents.health_agent import health_agent_node
+                state["domain"] = "health"
+                return health_agent_node(state)
+
             prompt = f"""You are TriSeva's Legal and Government Schemes Assistant — an expert on Indian government welfare schemes, citizen rights, and legal aid.
 Analyze the provided document context (e.g., government order, scheme application, land record, or legal document) and fulfill the user's request.
 

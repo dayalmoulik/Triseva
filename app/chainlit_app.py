@@ -269,11 +269,22 @@ async def on_message(message: cl.Message):
     else:
         # Only reuse active session image if the query asks about the image/document or if query is blank
         last_path = cl.user_session.get("last_image_path")
+        last_domain = cl.user_session.get("last_domain")
+        domain_override = None
+
         if last_path:
             query_low = query.lower()
-            referential_keywords = ["it", "this", "image", "document", "prescription", "card", "report", "summarize", "dosage", "explain", "scan", "photo", "what about"]
+            referential_keywords = [
+                "it", "this", "image", "document", "prescription", "card", "report", "summarize", 
+                "dosage", "explain", "scan", "photo", "what about", "data", "above data", 
+                "suggestion", "suggestions", "parameter", "parameters", "reading", "readings", 
+                "value", "values", "action", "recommendation", "recommendations", "result", "results", "table"
+            ]
             if not query_low or any(k in query_low for k in referential_keywords):
                 image_path = last_path
+                if last_domain:
+                    # Pass last_domain as domain_override for referential follow-up queries
+                    domain_override = last_domain
 
     if not query:
         if image_path:
@@ -290,6 +301,7 @@ async def on_message(message: cl.Message):
             query=query,
             session_id=session_id,
             image_path=image_path,
+            domain_override=domain_override,
         )
         latency = round(time.time() - start_time, 2)
 
@@ -301,6 +313,9 @@ async def on_message(message: cl.Message):
         sources    = result.get("sources", [])
         chunks     = result.get("retrieved_chunks", [])
         telemetry  = result.get("telemetry", {})
+
+        if domain in ["health", "legal", "agriculture"]:
+            cl.user_session.set("last_domain", domain)
 
         from agents.utils import is_answer_not_found
         from utils.translation_helper import is_hindi_or_hinglish
