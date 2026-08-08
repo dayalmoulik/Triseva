@@ -183,23 +183,14 @@ def get_data_layer():
     except TypeError:
         return SQLAlchemyDataLayer(conn_string=conn_str)
 
-# ── Authentication Callback ──────────────────────────────────────────────────
-@cl.password_auth_callback
-def auth_callback(username, password):
-    """Authenticates citizen user credentials for access control.
-
-    Args:
-        username (str): User identifier.
-        password (str): Password string.
-
-    Returns:
-        cl.User | None: Authenticated user object or None.
-    """
-    u = (username or "").strip().lower()
-    p = (password or "").strip()
-    if (u == "citizen" and p == "triseva2025") or (u == "admin" and p == "admin123"):
-        return cl.User(identifier=u, metadata={"role": "user", "provider": "credentials"})
-    return None
+# ── Authentication Callback (Disabled per User Request) ───────────────────────
+# @cl.password_auth_callback
+# def auth_callback(username, password):
+#     u = (username or "").strip().lower()
+#     p = (password or "").strip()
+#     if (u == "citizen" and p == "triseva2025") or (u == "admin" and p == "admin123"):
+#         return cl.User(identifier=u, metadata={"role": "user", "provider": "credentials"})
+#     return None
 
 
 DOMAIN_META = {
