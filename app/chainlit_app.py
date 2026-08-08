@@ -34,6 +34,7 @@ if hasattr(sys.stderr, "reconfigure"):
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 os.environ["LANGCHAIN_SUPPRESS_DEPRECATION_WARNINGS"] = "1"
+os.environ["CHAINLIT_COOKIE_SAMESITE"] = "none"
 
 from dotenv import load_dotenv
 load_dotenv()
@@ -42,6 +43,14 @@ if not os.getenv("CHAINLIT_AUTH_SECRET"):
     os.environ["CHAINLIT_AUTH_SECRET"] = "d96ba0f3d67f7e2a9b3d0a6498ec11f7c11f7c11f7c11f7c11f7c1"
 
 import chainlit as cl
+
+try:
+    import chainlit.auth.cookie as c_cookie
+    c_cookie._cookie_samesite = "none"
+    c_cookie._cookie_secure = True
+except Exception:
+    pass
+
 from chainlit.data.sql_alchemy import SQLAlchemyDataLayer
 from main import ask
 from fastapi.staticfiles import StaticFiles
