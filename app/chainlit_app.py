@@ -38,6 +38,9 @@ os.environ["LANGCHAIN_SUPPRESS_DEPRECATION_WARNINGS"] = "1"
 from dotenv import load_dotenv
 load_dotenv()
 
+if not os.getenv("CHAINLIT_AUTH_SECRET"):
+    os.environ["CHAINLIT_AUTH_SECRET"] = "d96ba0f3d67f7e2a9b3d0a6498ec11f7c11f7c11f7c11f7c11f7c1"
+
 import chainlit as cl
 from chainlit.data.sql_alchemy import SQLAlchemyDataLayer
 from main import ask
@@ -183,8 +186,10 @@ def auth_callback(username, password):
     Returns:
         cl.User | None: Authenticated user object or None.
     """
-    if (username == "citizen" and password == "triseva2025") or (username == "admin" and password == "admin123"):
-        return cl.User(identifier=username, metadata={"role": "user", "provider": "credentials"})
+    u = (username or "").strip().lower()
+    p = (password or "").strip()
+    if (u == "citizen" and p == "triseva2025") or (u == "admin" and p == "admin123"):
+        return cl.User(identifier=u, metadata={"role": "user", "provider": "credentials"})
     return None
 
 

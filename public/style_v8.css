@@ -260,10 +260,18 @@ img[class*="avatar"],
    Login Page Custom Layout (Rebranding)
    ========================================================================== */
 
-/* Remove the icon on the top left of the login page */
+/* Show and style the logo header on the login page */
 .grid.min-h-svh div.flex.justify-center.gap-2,
 div[class*="grid-cols-2"] div[class*="md:justify-start"] {
-    display: none !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+}
+
+.grid.min-h-svh img,
+div[class*="grid-cols-2"] img {
+    max-height: 48px !important;
+    width: auto !important;
 }
 
 /* Swap the right logo banner panel to the left, and the form to the right (strictly inside fullscreen login container) */
