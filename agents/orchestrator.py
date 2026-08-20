@@ -16,7 +16,6 @@ warnings.filterwarnings("ignore", category=PendingDeprecationWarning)
 
 import os
 import time
-from langchain_groq import ChatGroq
 from langchain_core.prompts import ChatPromptTemplate
 from agents.state import TriSevaState
 
@@ -226,36 +225,34 @@ def orchestrator_node(state: TriSevaState) -> dict:
             print(f"  [Orchestrator] Local inference error: {e}. Falling back to Groq.")
             domain = None
 
-    # 3. Fallback: LLM Classification with Regex Fallback on Failure
+    # 2. Local Gemma 4 Classifier via Ollama (Tier 2 Fallback)
     if domain is None:
         try:
-            global llm, router_chain
-            if llm is None:
-                llm = ChatGroq(
-                    model="llama-3.1-8b-instant",
-                    api_key=os.getenv("GROQ_API_KEY") or os.getenv("Groq_API_Key"),
-                    temperature=0,
-                )
-                router_chain = ROUTER_PROMPT | llm
+            print("  [Orchestrator] Running Tier 2 classification via Local Gemma 4 (Ollama)...")
+            from langchain_ollama import ChatOllama
+            ollama_base = os.getenv("OLLAMA_API_BASE", "http://localhost:11434")
+            model_name = os.getenv("OLLAMA_MODEL", "gemma4")
+            llm = ChatOllama(model=model_name, base_url=ollama_base, temperature=0.0)
+            router_chain = ROUTER_PROMPT | llm
 
-            # Set timeout to 10 seconds for the orchestrator routing LLM
             response = router_chain.invoke({"query": classification_text}, config={"timeout": 10})
-            domain = response.content.strip().lower()
-            confidence = 1.0
+            pred_domain = response.content.strip().lower()
 
-            if domain not in ["health", "legal", "agriculture"]:
-                print(f"  [Orchestrator] Unexpected domain '{domain}' — defaulting via regex router")
+            if pred_domain in ["health", "legal", "agriculture"]:
+                domain = pred_domain
+                confidence = 0.85
+                print(f"  [Orchestrator] Local Gemma 4 Tier 2 predicted: {domain.upper()}")
+                telemetry["is_fallback_routing"] = True
+                telemetry["fallback_routing_method"] = "gemma4_ollama"
+            else:
+                print(f"  [Orchestrator] Gemma 4 output '{pred_domain}' unmapped — triggering Tier 3 Regex router")
                 domain = regex_keyword_router(classification_text)
                 confidence = 0.5
                 telemetry["is_fallback_routing"] = True
                 telemetry["fallback_routing_method"] = "regex"
-            else:
-                print(f"  [Orchestrator] Groq fallback predicted: {domain.upper()}")
-                telemetry["is_fallback_routing"] = True
-                telemetry["fallback_routing_method"] = "groq"
         except Exception as e:
-            print(f"  [Orchestrator] Groq fallback failed: {e}. Falling back to Regex Keyword router.")
-            domain = regex_keyword_router(query)
+            print(f"  [Orchestrator] Tier 2 Gemma 4 classifier fallback error: {e}. Running Tier 3 Regex router...")
+            domain = regex_keyword_router(classification_text)
             confidence = 0.5
             telemetry["is_fallback_routing"] = True
             telemetry["fallback_routing_method"] = "regex"

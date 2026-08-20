@@ -254,6 +254,44 @@ def is_ollama_online(ollama_url: str) -> bool:
         return False
 
 
+def extract_via_sarvam_vision(image_bytes: bytes) -> str:
+    """Uses Sarvam AI Document OCR Vision API for text transcription.
+
+    Args:
+        image_bytes (bytes): Binary bytes of processed image.
+
+    Returns:
+        str: Transcribed text string or empty string on failure.
+    """
+    sarvam_key = os.getenv("SARVAM_API_KEY") or os.getenv("Sarvam_API_Key")
+    if not sarvam_key:
+        print("SARVAM_API_KEY is not configured. Skipping Sarvam Vision.")
+        return ""
+
+    print("Calling Sarvam AI Vision OCR API for text extraction...")
+    try:
+        url = "https://api.sarvam.ai/v1/ocr"
+        headers = {"api-subscription-key": sarvam_key}
+        files = {"file": ("document.png", image_bytes, "image/png")}
+        response = requests.post(url, headers=headers, files=files, timeout=30)
+        
+        if response.status_code == 200:
+            data = response.json()
+            extracted_text = data.get("text", "") or data.get("extracted_text", "") or data.get("transcript", "")
+            if not extracted_text and "pages" in data:
+                extracted_text = "\n\n".join(
+                    page.get("text", "") for page in data["pages"] if isinstance(page, dict) and page.get("text")
+                )
+            if extracted_text and len(str(extracted_text).strip()) > 15:
+                print(f"multimodal: Successfully extracted text via Sarvam Vision ({len(str(extracted_text))} chars).")
+                return str(extracted_text).strip()
+        else:
+            print(f"multimodal: Sarvam Vision API error {response.status_code}: {response.text[:200]}")
+    except Exception as e:
+        print(f"multimodal: Sarvam Vision OCR extraction failed: {e}")
+    return ""
+
+
 def extract_text_via_qwen_vl(image_bytes: bytes) -> str:
     """Uses Qwen2.5-VL / Llama-3.2-Vision models via local Ollama for OCR extraction.
 
@@ -528,18 +566,25 @@ def image_processing_node(state: TriSevaState) -> dict:
             # Run image preprocessing (EXIF transpose, contrast/sharpness enhancement, intelligent resize)
             processed_bytes = preprocess_image_bytes(raw_bytes)
 
-            # 1. Primary Layout Engine: Azure AI Document Intelligence (Layout Model)
-            extracted_text = extract_via_azure_document_intelligence(processed_bytes)
+            use_sarvam_vision = os.getenv("USE_SARVAM_VISION", "false").lower() == "true"
 
-            # 2. Secondary Cloud VLM: Gemini 2.0 Flash / 1.5 Flash
+            # 1. Primary Engine Option: Sarvam Vision API (if enabled via env)
+            if use_sarvam_vision:
+                extracted_text = extract_via_sarvam_vision(processed_bytes)
+
+            # 2. Primary Layout Engine: Azure AI Document Intelligence
+            if not extracted_text:
+                extracted_text = extract_via_azure_document_intelligence(processed_bytes)
+
+            # 3. Local On-Device VLM: Gemma 4 / Qwen2.5-VL / Llama-3.2-Vision (Ollama)
+            if not extracted_text:
+                extracted_text = extract_text_via_local_ollama(processed_bytes)
+
+            # 4. Secondary Cloud VLM: Gemini 2.5 Flash / 2.0 Flash
             if not extracted_text:
                 extracted_text = extract_text_via_gemini_flash(processed_bytes)
 
-            # 3. Local On-Device VLM: Qwen2.5-VL / Llama-3.2-Vision (Ollama)
-            if not extracted_text:
-                extracted_text = extract_text_via_qwen_vl(processed_bytes)
-
-            # 4. Fallback Cloud VLM: OpenAI gpt-4o-mini
+            # 5. Fallback Cloud VLM: OpenAI gpt-4o-mini
             if not extracted_text:
                 print("multimodal: Cloud VLM fallback. Using OpenAI OCR fallback...")
                 extracted_text = extract_text_via_openai_mini(processed_bytes)

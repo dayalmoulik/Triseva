@@ -405,18 +405,18 @@ def safe_llm_invoke(llm, prompt: str, temperature: float = 0.3, max_tokens: int 
     except Exception as e:
         print(f"  [safe_llm_invoke] Primary LLM exception: {e}")
 
-    # Fallback to Groq / OpenAI / Claude if primary returned empty string or raised exception
-    print("  [safe_llm_invoke] Primary LLM returned empty string or failed. Triggering secondary cloud LLM fallback...")
-    groq_key = os.getenv("GROQ_API_KEY")
-    if groq_key:
-        try:
-            from langchain_groq import ChatGroq
-            fallback = ChatGroq(model_name="llama-3.3-70b-versatile", groq_api_key=groq_key, temperature=temperature, max_tokens=max_tokens)
-            res = fallback.invoke(prompt)
-            if res and hasattr(res, "content") and res.content:
-                return res.content
-        except Exception as e:
-            print(f"  [safe_llm_invoke] Groq fallback failed: {e}")
+    # Fallback to Ollama (Gemma 4) / OpenAI / Claude if primary returned empty string or raised exception
+    print("  [safe_llm_invoke] Primary LLM returned empty string or failed. Triggering fallback...")
+    try:
+        from langchain_ollama import ChatOllama
+        ollama_base = os.getenv("OLLAMA_API_BASE", "http://localhost:11434")
+        ollama_model = os.getenv("OLLAMA_MODEL", "gemma4")
+        fallback = ChatOllama(model=ollama_model, base_url=ollama_base, temperature=temperature)
+        res = fallback.invoke(prompt)
+        if res and hasattr(res, "content") and res.content:
+            return res.content
+    except Exception as e:
+        print(f"  [safe_llm_invoke] Ollama local fallback failed: {e}")
 
     openai_key = os.getenv("OPENAI_API_KEY")
     if openai_key:

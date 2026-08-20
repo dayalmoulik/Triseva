@@ -27,23 +27,21 @@ def get_llm(temperature: float = 0.2, max_tokens: int = 1024, timeout: int = 20)
         ValueError: If no valid LLM provider API key is present in environment variables.
     """
     primary_provider = (os.getenv("LLM_PROVIDER") or os.getenv("LLM_Provider") or "sarvam").lower()
+    ollama_base = os.getenv("OLLAMA_API_BASE", "http://localhost:11434")
+    ollama_model = os.getenv("OLLAMA_MODEL", "gemma4")
     
     fallbacks = []
 
-    # 1. Prepare Groq Fallback if key available
-    groq_key = os.getenv("GROQ_API_KEY") or os.getenv("Groq_API_Key")
-    if groq_key and primary_provider != "groq":
-        try:
-            from langchain_groq import ChatGroq
-            fallbacks.append(ChatGroq(
-                model="llama-3.3-70b-versatile",
-                api_key=groq_key,
-                temperature=temperature,
-                max_tokens=max_tokens,
-                timeout=12,
-            ))
-        except Exception:
-            pass
+    # 1. Prepare Ollama Local Fallback if available
+    try:
+        from langchain_ollama import ChatOllama
+        fallbacks.append(ChatOllama(
+            model=ollama_model,
+            base_url=ollama_base,
+            temperature=temperature,
+        ))
+    except Exception:
+        pass
 
     # 2. Prepare OpenAI Fallback if key available
     openai_key = os.getenv("OPENAI_API_KEY") or os.getenv("OpenAI_API_Key")
@@ -61,7 +59,17 @@ def get_llm(temperature: float = 0.2, max_tokens: int = 1024, timeout: int = 20)
 
     # 3. Build Primary LLM instance
     primary_llm = None
-    if primary_provider == "sarvam":
+    if primary_provider == "ollama":
+        try:
+            from langchain_ollama import ChatOllama
+            primary_llm = ChatOllama(
+                model=ollama_model,
+                base_url=ollama_base,
+                temperature=temperature,
+            )
+        except Exception as e:
+            print(f"  [LLM Factory] Could not initialize ChatOllama model '{ollama_model}': {e}")
+    elif primary_provider == "sarvam":
         api_key = os.getenv("SARVAM_API_KEY") or os.getenv("Sarvam_API_Key")
         if api_key:
             primary_llm = ChatOpenAI(
@@ -72,15 +80,6 @@ def get_llm(temperature: float = 0.2, max_tokens: int = 1024, timeout: int = 20)
                 max_tokens=max_tokens,
                 timeout=timeout,
             )
-    elif primary_provider == "groq" and groq_key:
-        from langchain_groq import ChatGroq
-        primary_llm = ChatGroq(
-            model="llama-3.3-70b-versatile",
-            api_key=groq_key,
-            temperature=temperature,
-            max_tokens=max_tokens,
-            timeout=timeout,
-        )
     elif primary_provider == "openai" and openai_key:
         primary_llm = ChatOpenAI(
             model="gpt-4o-mini",
@@ -104,7 +103,7 @@ def get_llm(temperature: float = 0.2, max_tokens: int = 1024, timeout: int = 20)
                 max_tokens=max_tokens,
                 timeout=timeout,
             )
-        raise ValueError("No valid LLM API key configured.")
+        raise ValueError("No valid LLM API key or local Ollama instance configured.")
 
     if fallbacks:
         return primary_llm.with_fallbacks(fallbacks)
