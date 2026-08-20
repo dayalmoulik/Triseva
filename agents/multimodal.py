@@ -60,9 +60,11 @@ def get_cached_ocr(file_bytes: bytes) -> str | None:
         if os.path.exists(cache_path):
             with open(cache_path, "r", encoding="utf-8") as f:
                 content = f.read().strip()
-                if content:
+                if content and len(content) >= 100 and "unable to read" not in content.lower():
                     print(f"multimodal: Cache HIT for MD5 hash {file_hash[:8]}...")
                     return content
+                else:
+                    print(f"multimodal: Cache EXPIRED/INVALID (only {len(content)} chars). Force re-running fresh OCR...")
     except Exception as e:
         print(f"multimodal: Cache read warning: {e}")
     return None
@@ -293,7 +295,7 @@ def extract_via_sarvam_vision(image_bytes: bytes) -> str:
         )
         
         terminal_states = {"completed", "partially_completed", "failed", "rejected"}
-        max_wait_sec = 30
+        max_wait_sec = 60
         start_t = time.time()
         
         while time.time() - start_t < max_wait_sec:

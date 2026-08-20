@@ -161,7 +161,8 @@ def orchestrator_node(state: TriSevaState) -> dict:
         "soil health card", "soil health", "soil health indicators", "ph:", "electrical conductivity", 
         "labile carbon", "organic carbon", "bulk density", "water holding capacity", "microbial biomass carbon", 
         "dehydrogenase activity", "fym", "npk", "fertilizer", "pesticide", "fungicide", "soil test", 
-        "krishi", "kvk", "dap", "urea", "crop loss", "farm holding"
+        "krishi", "kvk", "dap", "urea", "crop loss", "farm holding",
+        "मृदा", "मृदा कार्ड", "मृदा स्वास्थ्य", "किसान का नाम", "पोषक तत्व", "नमूना", "यूरिया", "डी.ए.पी.", "जिप्सम"
     ]):
         print("  [Orchestrator] Deterministic domain match -> AGRICULTURE (confidence: 1.0)")
         telemetry["routing_hops"].append("agriculture")
