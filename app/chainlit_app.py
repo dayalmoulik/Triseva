@@ -303,17 +303,30 @@ async def on_message(message: cl.Message):
 
         if last_path:
             query_low = query.lower()
-            referential_keywords = [
-                "it", "this", "image", "document", "prescription", "card", "report", "summarize", 
-                "dosage", "explain", "scan", "photo", "what about", "data", "above data", 
-                "suggestion", "suggestions", "parameter", "parameters", "reading", "readings", 
-                "value", "values", "action", "recommendation", "recommendations", "result", "results", "table"
-            ]
-            if not query_low or any(k in query_low for k in referential_keywords):
-                image_path = last_path
-                if last_domain:
-                    # Pass last_domain as domain_override for referential follow-up queries
-                    domain_override = last_domain
+            
+            # Check if user query contains explicit domain markers for another domain (e.g. medical or legal)
+            health_terms = ["haemoglobin", "hemoglobin", "blood", "sugar", "diabetes", "fever", "doctor", "medicine", "prescription", "symptom", "creatinine", "tsh", "bp", "spo2", "hospital", "patient", "disease", "treatment"]
+            legal_terms = ["pm kisan", "pmkisan", "mgnrega", "nrega", "rti", "bns", "bnss", "bsa", "court", "act", "section", "ration card", "aadhaar", "legal", "lawyer"]
+            
+            has_health_marker = any(k in query_low for k in health_terms)
+            has_legal_marker = any(k in query_low for k in legal_terms)
+
+            # If user query contains a clear domain marker for a different domain, clear session image/override
+            if has_health_marker or has_legal_marker:
+                image_path = None
+                domain_override = None
+            else:
+                import re
+                referential_keywords = [
+                    "image", "document", "prescription", "card", "report", "summarize", 
+                    "dosage", "explain", "scan", "photo", "above data", 
+                    "suggestion", "suggestions", "recommendation", "recommendations"
+                ]
+                is_referential = not query_low or any(re.search(r"\b" + k + r"\b", query_low) for k in referential_keywords)
+                if is_referential:
+                    image_path = last_path
+                    if last_domain:
+                        domain_override = last_domain
 
     if not query:
         if image_path:
