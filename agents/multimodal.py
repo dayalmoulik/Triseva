@@ -255,7 +255,7 @@ def is_ollama_online(ollama_url: str) -> bool:
 
 
 def extract_via_sarvam_vision(image_bytes: bytes) -> str:
-    """Uses Sarvam AI Document OCR Vision API for text transcription.
+    """Uses Sarvam AI Doc AI Vision SDK for document text transcription and field extraction.
 
     Args:
         image_bytes (bytes): Binary bytes of processed image.
@@ -268,25 +268,68 @@ def extract_via_sarvam_vision(image_bytes: bytes) -> str:
         print("SARVAM_API_KEY is not configured. Skipping Sarvam Vision.")
         return ""
 
-    print("Calling Sarvam AI Vision OCR API for text extraction...")
+    print("Calling Sarvam AI Doc AI Vision SDK for text extraction...")
     try:
-        url = "https://api.sarvam.ai/v1/ocr"
-        headers = {"api-subscription-key": sarvam_key}
-        files = {"file": ("document.png", image_bytes, "image/png")}
-        response = requests.post(url, headers=headers, files=files, timeout=30)
+        from sarvamai import SarvamAI
+        import json
+        import time
+
+        client = SarvamAI(api_subscription_key=sarvam_key)
+        schema = {
+            "type": "object",
+            "properties": {
+                "full_text": {"type": "string", "description": "Full transcribed text of the entire document including headers, clinical history, and prescription notes"},
+                "patient_name": {"type": "string", "description": "Patient Name"},
+                "doctor_name": {"type": "string", "description": "Doctor Name"},
+                "medications": {"type": "string", "description": "Prescribed medicines and dosages"}
+            }
+        }
+
+        job = client.doc_ai.extract(
+            file=[("document.png", image_bytes, "image/png")],
+            schema=json.dumps(schema),
+            language="hi-IN",
+            output_format="json"
+        )
         
-        if response.status_code == 200:
-            data = response.json()
-            extracted_text = data.get("text", "") or data.get("extracted_text", "") or data.get("transcript", "")
-            if not extracted_text and "pages" in data:
-                extracted_text = "\n\n".join(
-                    page.get("text", "") for page in data["pages"] if isinstance(page, dict) and page.get("text")
-                )
-            if extracted_text and len(str(extracted_text).strip()) > 15:
-                print(f"multimodal: Successfully extracted text via Sarvam Vision ({len(str(extracted_text))} chars).")
-                return str(extracted_text).strip()
-        else:
-            print(f"multimodal: Sarvam Vision API error {response.status_code}: {response.text[:200]}")
+        terminal_states = {"completed", "partially_completed", "failed", "rejected"}
+        max_wait_sec = 30
+        start_t = time.time()
+        
+        while time.time() - start_t < max_wait_sec:
+            st = client.doc_ai.get_status(job_id=job.job_id)
+            if st.status.lower() in terminal_states:
+                break
+            time.sleep(2)
+
+        results = client.doc_ai.get_results(job_id=job.job_id)
+        res_data = results.result if hasattr(results, "result") else results
+
+        if isinstance(res_data, dict):
+            full_text = res_data.get("full_text", "") or ""
+            meds = res_data.get("medications", "") or ""
+            patient = res_data.get("patient_name", "") or ""
+            doc = res_data.get("doctor_name", "") or ""
+            
+            combined = []
+            if full_text:
+                combined.append(full_text)
+            if patient and patient not in full_text:
+                combined.append(f"Patient Name: {patient}")
+            if doc and doc not in full_text:
+                combined.append(f"Doctor Name: {doc}")
+            if meds and meds not in full_text:
+                combined.append(f"Prescriptions: {meds}")
+
+            extracted_str = "\n".join(combined) if combined else json.dumps(res_data)
+            if extracted_str and len(extracted_str.strip()) > 15:
+                print(f"multimodal: Successfully extracted text via Sarvam Doc AI ({len(extracted_str)} chars).")
+                return extracted_str.strip()
+
+        elif isinstance(res_data, str) and len(res_data.strip()) > 15:
+            print(f"multimodal: Successfully extracted text via Sarvam Doc AI ({len(res_data)} chars).")
+            return res_data.strip()
+
     except Exception as e:
         print(f"multimodal: Sarvam Vision OCR extraction failed: {e}")
     return ""

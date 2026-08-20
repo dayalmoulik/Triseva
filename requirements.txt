@@ -38,3 +38,4 @@ python-multipart
 aiosqlite
 sqlalchemy
 pillow>=10.0.0
+sarvamai>=0.1.30
