@@ -27,7 +27,8 @@ def get_llm(temperature: float = 0.2, max_tokens: int = 1024, timeout: int = 20)
         ValueError: If no valid LLM provider API key is present in environment variables.
     """
     primary_provider = (os.getenv("LLM_PROVIDER") or os.getenv("LLM_Provider") or "sarvam").lower()
-    ollama_base = os.getenv("OLLAMA_API_BASE", "http://localhost:11434")
+    raw_base = os.getenv("OLLAMA_API_BASE", "http://localhost:11434")
+    ollama_base = raw_base.replace("/api/generate", "").replace("/api/chat", "").rstrip("/")
     ollama_model = os.getenv("OLLAMA_MODEL", "gemma4")
     
     fallbacks = []
@@ -43,7 +44,7 @@ def get_llm(temperature: float = 0.2, max_tokens: int = 1024, timeout: int = 20)
     except Exception:
         pass
 
-    # 2. Prepare OpenAI Fallback if key available
+    # 3. Prepare OpenAI Fallback if key available
     openai_key = os.getenv("OPENAI_API_KEY") or os.getenv("OpenAI_API_Key")
     if openai_key and primary_provider != "openai":
         try:

@@ -39,10 +39,14 @@ def parse_agent_json(text: str, default_disclaimer: str) -> Tuple[str, str]:
     Returns:
         Tuple[str, str]: Pair of (factual_response, caution_note).
     """
-    if not text:
+    if not text or not text.strip():
         return "", default_disclaimer
 
     text_clean = text.strip()
+
+    # If text is direct markdown/plain text without JSON braces, return directly
+    if "{" not in text_clean:
+        return clean_inline_sources(text_clean), default_disclaimer
 
     # 1. Clean markdown code fence wrappers (```json ... ```)
     if "```" in text_clean:
@@ -104,6 +108,9 @@ def parse_agent_json(text: str, default_disclaimer: str) -> Tuple[str, str]:
     cleaned_fallback = re.sub(r'^\s*\{\s*"factual_response"\s*:\s*"?', '', text_clean, flags=re.IGNORECASE)
     cleaned_fallback = re.sub(r'"\s*,\s*"caution_note"\s*:.*$', '', cleaned_fallback, flags=re.DOTALL | re.IGNORECASE)
     cleaned_fallback = re.sub(r'"\s*\}\s*$', '', cleaned_fallback).strip()
+
+    if not cleaned_fallback or len(cleaned_fallback.strip()) < 5:
+        cleaned_fallback = text.strip()
 
     return clean_inline_sources(cleaned_fallback), default_disclaimer
 
@@ -405,28 +412,29 @@ def safe_llm_invoke(llm, prompt: str, temperature: float = 0.3, max_tokens: int 
     except Exception as e:
         print(f"  [safe_llm_invoke] Primary LLM exception: {e}")
 
-    # Fallback to Ollama (Gemma 4) / OpenAI / Claude if primary returned empty string or raised exception
+    # Fallback to Ollama (Gemma 4) / Anthropic Claude if primary returned empty string or raised exception
     print("  [safe_llm_invoke] Primary LLM returned empty string or failed. Triggering fallback...")
     try:
         from langchain_ollama import ChatOllama
-        ollama_base = os.getenv("OLLAMA_API_BASE", "http://localhost:11434")
+        raw_base = os.getenv("OLLAMA_API_BASE", "http://localhost:11434")
+        ollama_base = raw_base.replace("/api/generate", "").replace("/api/chat", "").rstrip("/")
         ollama_model = os.getenv("OLLAMA_MODEL", "gemma4")
         fallback = ChatOllama(model=ollama_model, base_url=ollama_base, temperature=temperature)
         res = fallback.invoke(prompt)
         if res and hasattr(res, "content") and res.content:
             return res.content
     except Exception as e:
-        print(f"  [safe_llm_invoke] Ollama local fallback failed: {e}")
+        print(f"  [safe_llm_invoke] Ollama Gemma 4 fallback failed: {e}")
 
-    openai_key = os.getenv("OPENAI_API_KEY")
-    if openai_key:
+    anthropic_key = os.getenv("ANTHROPIC_API_KEY")
+    if anthropic_key:
         try:
-            from langchain_openai import ChatOpenAI
-            fallback = ChatOpenAI(model="gpt-4o-mini", api_key=openai_key, temperature=temperature, max_tokens=max_tokens)
+            from langchain_anthropic import ChatAnthropic
+            fallback = ChatAnthropic(model="claude-3-haiku-20240307", api_key=anthropic_key, temperature=temperature, max_tokens=max_tokens)
             res = fallback.invoke(prompt)
             if res and hasattr(res, "content") and res.content:
                 return res.content
         except Exception as e:
-            print(f"  [safe_llm_invoke] OpenAI fallback failed: {e}")
+            print(f"  [safe_llm_invoke] Anthropic Claude fallback failed: {e}")
 
     return ""
