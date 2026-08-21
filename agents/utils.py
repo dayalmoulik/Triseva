@@ -392,11 +392,33 @@ def append_source_links(answer_text: str, sources: list) -> str:
 
     return clean_ans
 
+def is_ollama_available(base_url: str = "http://localhost:11434") -> bool:
+    """Fast 200ms socket probe to check if local Ollama server is active.
+
+    Prevents 10-15s HTTP connection timeouts on cloud platforms like Hugging Face Spaces.
+    """
+    import socket
+    from urllib.parse import urlparse
+    try:
+        parsed = urlparse(base_url if "://" in base_url else f"http://{base_url}")
+        host = parsed.hostname or "localhost"
+        port = parsed.port or 11434
+        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        s.settimeout(0.2)
+        s.connect((host, port))
+        s.close()
+        return True
+    except Exception:
+        return False
+
 def safe_llm_invoke(llm, prompt: str, temperature: float = 0.3, max_tokens: int = 1024) -> str:
-    """Invokes primary LLM with automated secondary cloud failover on empty model output.
+    """Safely invokes an LLM model instance with automatic fallback chain.
+
+    If primary LLM returns empty string, None, or raises an exception, triggers
+    local Ollama (Gemma 4) if active, or cloud API fallbacks seamlessly.
 
     Args:
-        llm: Primary LLM model instance.
+        llm: LangChain base language model object.
         prompt (str): Prompt string to invoke.
         temperature (float, optional): Generation temperature. Defaults to 0.3.
         max_tokens (int, optional): Maximum tokens limit. Defaults to 1024.
@@ -414,17 +436,20 @@ def safe_llm_invoke(llm, prompt: str, temperature: float = 0.3, max_tokens: int 
 
     # Fallback to Ollama (Gemma 4) / Anthropic Claude if primary returned empty string or raised exception
     print("  [safe_llm_invoke] Primary LLM returned empty string or failed. Triggering fallback...")
-    try:
-        from langchain_ollama import ChatOllama
-        raw_base = os.getenv("OLLAMA_API_BASE", "http://localhost:11434")
-        ollama_base = raw_base.replace("/api/generate", "").replace("/api/chat", "").rstrip("/")
-        ollama_model = os.getenv("OLLAMA_MODEL", "gemma4")
-        fallback = ChatOllama(model=ollama_model, base_url=ollama_base, temperature=temperature)
-        res = fallback.invoke(prompt)
-        if res and hasattr(res, "content") and res.content:
-            return res.content
-    except Exception as e:
-        print(f"  [safe_llm_invoke] Ollama Gemma 4 fallback failed: {e}")
+    raw_base = os.getenv("OLLAMA_API_BASE", "http://localhost:11434")
+    ollama_base = raw_base.replace("/api/generate", "").replace("/api/chat", "").rstrip("/")
+    if is_ollama_available(ollama_base):
+        try:
+            from langchain_ollama import ChatOllama
+            ollama_model = os.getenv("OLLAMA_MODEL", "gemma4")
+            fallback = ChatOllama(model=ollama_model, base_url=ollama_base, temperature=temperature)
+            res = fallback.invoke(prompt)
+            if res and hasattr(res, "content") and res.content:
+                return res.content
+        except Exception as e:
+            print(f"  [safe_llm_invoke] Ollama Gemma 4 fallback failed: {e}")
+    else:
+        print("  [safe_llm_invoke] Local Ollama server inactive — skipping to cloud fallbacks...")
 
     anthropic_key = os.getenv("ANTHROPIC_API_KEY")
     if anthropic_key:

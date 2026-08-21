@@ -33,16 +33,18 @@ def get_llm(temperature: float = 0.2, max_tokens: int = 1024, timeout: int = 20)
     
     fallbacks = []
 
-    # 1. Prepare Ollama Local Fallback if available
-    try:
-        from langchain_ollama import ChatOllama
-        fallbacks.append(ChatOllama(
-            model=ollama_model,
-            base_url=ollama_base,
-            temperature=temperature,
-        ))
-    except Exception:
-        pass
+    # 1. Prepare Ollama Local Fallback if available and active on port 11434
+    from agents.utils import is_ollama_available
+    if is_ollama_available(ollama_base):
+        try:
+            from langchain_ollama import ChatOllama
+            fallbacks.append(ChatOllama(
+                model=ollama_model,
+                base_url=ollama_base,
+                temperature=temperature,
+            ))
+        except Exception:
+            pass
 
     # 3. Prepare OpenAI Fallback if key available
     openai_key = os.getenv("OPENAI_API_KEY") or os.getenv("OpenAI_API_Key")
