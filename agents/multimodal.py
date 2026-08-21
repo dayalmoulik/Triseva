@@ -620,11 +620,7 @@ def image_processing_node(state: TriSevaState) -> dict:
             if not extracted_text and use_sarvam_vision:
                 extracted_text = extract_via_sarvam_vision(processed_bytes)
 
-            # 3. Cloud VLM Vision Engine: Gemini 2.5 Flash
-            if not extracted_text:
-                extracted_text = extract_text_via_gemini_flash(processed_bytes)
-
-            # 4. Local On-Device VLM: Gemma 4 / Qwen2.5-VL (only if Ollama active)
+            # 3. Local On-Device VLM: Gemma 4 / Qwen2.5-VL (only if Ollama active)
             raw_base = os.getenv("OLLAMA_API_BASE", "http://localhost:11434")
             ollama_base = raw_base.replace("/api/generate", "").replace("/api/chat", "").rstrip("/")
             from agents.utils import is_ollama_available

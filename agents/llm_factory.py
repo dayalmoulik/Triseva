@@ -46,20 +46,7 @@ def get_llm(temperature: float = 0.2, max_tokens: int = 1024, timeout: int = 20)
         except Exception:
             pass
 
-    # 2. Prepare Gemini Flash Fallback if key available
-    google_key = os.getenv("GOOGLE_API_KEY")
-    if google_key and primary_provider != "google":
-        try:
-            from langchain_google_genai import ChatGoogleGenerativeAI
-            fallbacks.append(ChatGoogleGenerativeAI(
-                model="gemini-2.5-flash",
-                google_api_key=google_key,
-                temperature=temperature,
-            ))
-        except Exception:
-            pass
-
-    # 3. Prepare OpenAI Fallback if key available
+    # 2. Prepare OpenAI Fallback if key available
     openai_key = os.getenv("OPENAI_API_KEY") or os.getenv("OpenAI_API_Key")
     if openai_key and primary_provider != "openai":
         try:

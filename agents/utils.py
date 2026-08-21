@@ -458,17 +458,6 @@ def safe_llm_invoke(llm, prompt: str, temperature: float = 0.3, max_tokens: int 
     else:
         print("  [safe_llm_invoke] Local Ollama server inactive — skipping to cloud fallbacks...")
 
-    google_key = os.getenv("GOOGLE_API_KEY")
-    if google_key:
-        try:
-            from langchain_google_genai import ChatGoogleGenerativeAI
-            fallback = ChatGoogleGenerativeAI(model="gemini-2.5-flash", google_api_key=google_key, temperature=temperature)
-            res = fallback.invoke(prompt)
-            if res and hasattr(res, "content") and res.content:
-                return res.content
-        except Exception as e:
-            print(f"  [safe_llm_invoke] Gemini Flash fallback failed: {e}")
-
     openai_key = os.getenv("OPENAI_API_KEY")
     if openai_key:
         try:
