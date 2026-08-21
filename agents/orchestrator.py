@@ -157,8 +157,27 @@ def orchestrator_node(state: TriSevaState) -> dict:
     query_lower = classification_text.strip().lower()
 
     # High-precision deterministic domain overrides for unambiguous domain markers
+    # 1. Health & Medical deterministic domain overrides (checked FIRST)
     if any(k in query_lower for k in [
-        "soil health card", "soil health", "soil health indicators", "ph:", "electrical conductivity", 
+        "aiims", "hospital", "out patient", "opd", "ipd", "paediatrics", "pediatrics",
+        "prescription", "prescriptions", "rx", "medicine", "medication", "dosage", "tablet", "tablets", 
+        "syrup", "capsule", "capsules", "injection", "inj", "tab", "syp", "cap", "clinic", "doctor", 
+        "clinical", "patient", "diagnosis", "ayushman", "pm-jay", "pmjay", "haemoglobin", "hemoglobin", 
+        "homeoglobin", "medline", "pharma", "pharmacy", "medical", "consultant", "dental", "teeth", 
+        "white tusk", "augmentin", "enzoflam", "pan d", "hexigel", "mutation", "gene", "enzyme", "homozygous"
+    ]):
+        print("  [Orchestrator] Deterministic domain match -> HEALTH (confidence: 1.0)")
+        telemetry["routing_hops"].append("health")
+        return {
+            "domain": "health",
+            "routing_decision": "health",
+            "retry_count": retry_count,
+            "telemetry": telemetry,
+        }
+
+    # 2. Agriculture deterministic domain overrides
+    if any(k in query_lower for k in [
+        "soil health card", "soil health", "soil health indicators", "soil ph", "ph value", "electrical conductivity", 
         "labile carbon", "organic carbon", "bulk density", "water holding capacity", "microbial biomass carbon", 
         "dehydrogenase activity", "fym", "npk", "fertilizer", "pesticide", "fungicide", "soil test", 
         "krishi", "kvk", "dap", "urea", "crop loss", "farm holding",
@@ -173,16 +192,7 @@ def orchestrator_node(state: TriSevaState) -> dict:
             "telemetry": telemetry,
         }
 
-    if any(k in query_lower for k in ["prescription", "prescriptions", "rx", "medicine", "medication", "dosage", "tablet", "tablets", "syrup", "capsule", "capsules", "injection", "inj", "tab", "syp", "cap", "opd", "ipd", "clinic", "doctor", "clinical", "patient", "diagnosis", "ayushman", "pm-jay", "pmjay", "haemoglobin", "hemoglobin", "homeoglobin", "hospital", "medline", "pharma", "pharmacy", "medical", "consultant", "dental", "teeth", "white tusk", "augmentin", "enzoflam", "pan d", "hexigel"]):
-        print("  [Orchestrator] Deterministic domain match -> HEALTH (confidence: 1.0)")
-        telemetry["routing_hops"].append("health")
-        return {
-            "domain": "health",
-            "routing_decision": "health",
-            "retry_count": retry_count,
-            "telemetry": telemetry,
-        }
-
+    # 3. Legal & Governance deterministic domain overrides
     if any(k in query_lower for k in ["pm kisan", "pm-kisan", "mgnrega", "mnrega", "nrega", "pmay", "rti", "dpdp", "bns", "bnss", "bsa", "ration card", "aadhaar", "land record", "khasra", "khatauni", "nagaland", "jameen", "zameen", "kagzat", "kagaj", "chhoot", "patta", "stamp duty", "article 371a"]):
         print("  [Orchestrator] Deterministic domain match -> LEGAL (confidence: 1.0)")
         telemetry["routing_hops"].append("legal")

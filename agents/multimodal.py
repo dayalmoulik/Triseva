@@ -613,21 +613,23 @@ def image_processing_node(state: TriSevaState) -> dict:
 
             use_sarvam_vision = os.getenv("USE_SARVAM_VISION", "false").lower() == "true"
 
-            # 1. Primary Engine Option: Sarvam Vision API (if enabled via env)
-            if use_sarvam_vision:
+            # 1. Fast Primary Layout Engine: Azure AI Document Intelligence (~2.5s)
+            extracted_text = extract_via_azure_document_intelligence(processed_bytes)
+
+            # 2. Indic Vision Engine: Sarvam Vision API (if enabled & Azure missed)
+            if not extracted_text and use_sarvam_vision:
                 extracted_text = extract_via_sarvam_vision(processed_bytes)
 
-            # 2. Primary Layout Engine: Azure AI Document Intelligence
-            if not extracted_text:
-                extracted_text = extract_via_azure_document_intelligence(processed_bytes)
-
-            # 3. Local On-Device VLM: Gemma 4 / Qwen2.5-VL / Llama-3.2-Vision (Ollama)
-            if not extracted_text:
-                extracted_text = extract_text_via_local_ollama(processed_bytes)
-
-            # 4. Secondary Cloud VLM: Gemini 2.5 Flash / 2.0 Flash
+            # 3. Cloud VLM Vision Engine: Gemini 2.5 Flash
             if not extracted_text:
                 extracted_text = extract_text_via_gemini_flash(processed_bytes)
+
+            # 4. Local On-Device VLM: Gemma 4 / Qwen2.5-VL (only if Ollama active)
+            raw_base = os.getenv("OLLAMA_API_BASE", "http://localhost:11434")
+            ollama_base = raw_base.replace("/api/generate", "").replace("/api/chat", "").rstrip("/")
+            from agents.utils import is_ollama_available
+            if not extracted_text and is_ollama_available(ollama_base):
+                extracted_text = extract_text_via_local_ollama(processed_bytes)
 
             # 5. Fallback Cloud VLM: OpenAI gpt-4o-mini
             if not extracted_text:
