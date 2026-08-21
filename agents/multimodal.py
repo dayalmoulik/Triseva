@@ -643,6 +643,16 @@ def image_processing_node(state: TriSevaState) -> dict:
 
     if extracted_text and len(extracted_text.strip()) > 15:
         extracted_text = correct_medical_ocr_typos(extracted_text)
+
+        # Apply automated PII redaction & masking if enabled
+        try:
+            from utils.pii_sanitizer import sanitize_pii, is_pii_redaction_enabled
+            if is_pii_redaction_enabled():
+                extracted_text = sanitize_pii(extracted_text)
+                print("multimodal: Applied PII redaction to extracted text.")
+        except Exception as e:
+            print(f"multimodal: PII redaction warning: {e}")
+
         save_ocr_to_cache(raw_bytes, extracted_text)
         max_chars = 50000
         if len(extracted_text) > max_chars:

@@ -427,6 +427,13 @@ def safe_llm_invoke(llm, prompt: str, temperature: float = 0.3, max_tokens: int 
         str: Non-empty generated response text string.
     """
     try:
+        from utils.pii_sanitizer import sanitize_pii, is_pii_redaction_enabled
+        if is_pii_redaction_enabled():
+            prompt = sanitize_pii(prompt)
+    except Exception:
+        pass
+
+    try:
         res = llm.invoke(prompt)
         content = res.content if res and hasattr(res, "content") else str(res)
         if content and len(content.strip()) > 10:

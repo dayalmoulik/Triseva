@@ -389,13 +389,17 @@ async def on_message(message: cl.Message):
         meta  = DOMAIN_META.get(domain, {"icon": "🤖", "label": domain.title(), "color": "#6b7280"})
         main_step.output = f"Executed multi-agent workflow for {meta['icon']} {meta['label']} in {latency} seconds."
 
-        # ── Write User Study Session Logs ───────────────────────────────────
+        # ── Write User Study Session Logs (PII Sanitized) ───────────────────
         try:
+            from utils.pii_sanitizer import sanitize_pii
+            clean_query = sanitize_pii(query)
+            clean_answer = sanitize_pii(answer)
+
             log_data = {
                 "session_id": session_id,
                 "username": cl.user_session.get("user").identifier if cl.user_session.get("user") else "anonymous",
-                "query_text": query,
-                "response_text": answer,
+                "query_text": clean_query,
+                "response_text": clean_answer,
                 "selected_domain": domain,
                 "latency_sec": latency,
                 "score": score,
